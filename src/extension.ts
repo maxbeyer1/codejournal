@@ -1,6 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
 import { ChangeTracker, Change } from './changeTracker';
+import { SessionController, Session } from './sessions';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -8,11 +9,30 @@ export function activate(context: vscode.ExtensionContext) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   console.log('CodeJournal extension is now active');
 
-  // Create and start the change tracker
+  // Create the change tracker
   const changeTracker = new ChangeTracker();
   const changeTrackerDisposable = changeTracker.start();
   
-  // Register commands
+  // Create the session controller
+  const sessionController = new SessionController();
+  
+  // Register session commands
+  const startSessionCommand = vscode.commands.registerCommand('codejournal.startSession', () => {
+    const session = sessionController.startSession();
+    if (session) {
+      console.log(`Started new session with ID: ${session.id}`);
+    }
+  });
+  
+  const stopSessionCommand = vscode.commands.registerCommand('codejournal.stopSession', () => {
+    const session = sessionController.stopSession();
+    if (session) {
+      console.log(`Stopped session with ID: ${session.id}`);
+      console.log(`Session duration: ${new Date(session.endTime!).getTime() - new Date(session.startTime).getTime()} ms`);
+    }
+  });
+  
+  // Register changes commands
   const showChangesCommand = vscode.commands.registerCommand('codejournal.showChanges', () => {
     const changes = changeTracker.getChanges();
     if (changes.length === 0) {
@@ -23,6 +43,15 @@ export function activate(context: vscode.ExtensionContext) {
     // Create an output channel for showing changes
     const outputChannel = vscode.window.createOutputChannel('CodeJournal Changes', {log: true});
     outputChannel.clear();
+    
+    // Show session status
+    const currentSession = sessionController.getCurrentSession();
+    if (currentSession) {
+      outputChannel.appendLine(`Active session: ${currentSession.id} (started at ${currentSession.startTime})`);
+    } else {
+      outputChannel.appendLine('No active session');
+    }
+    outputChannel.appendLine('---');
     
     // Output each change
     changes.forEach((change, index) => {
@@ -69,6 +98,9 @@ export function activate(context: vscode.ExtensionContext) {
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
+    sessionController,
+    startSessionCommand,
+    stopSessionCommand,
     showChangesCommand,
     clearChangesCommand,
     helloWorldCommand

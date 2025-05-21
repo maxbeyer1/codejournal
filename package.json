@@ -26,6 +26,14 @@
       {
         "command": "codejournal.clearChanges",
         "title": "CodeJournal: Clear Tracked Changes"
+      },
+      {
+        "command": "codejournal.startSession",
+        "title": "CodeJournal: Start Recording Session"
+      },
+      {
+        "command": "codejournal.stopSession",
+        "title": "CodeJournal: Stop Recording Session"
       }
     ]
   },
