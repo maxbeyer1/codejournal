@@ -1,6 +1,6 @@
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
-import { ChangeTracker } from './changeTracker';
+import { ChangeTracker, Change } from './changeTracker';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -27,7 +27,28 @@ export function activate(context: vscode.ExtensionContext) {
     // Output each change
     changes.forEach((change, index) => {
       outputChannel.appendLine(`Change #${index + 1} (${change.timestamp})`);
+      outputChannel.appendLine(`Type: ${change.type}`);
       outputChannel.appendLine(`File: ${change.filePath}`);
+      
+      // Display type-specific information
+      switch (change.type) {
+        case 'save':
+          // No additional info needed for basic display
+          break;
+        case 'create':
+          // Show content length instead of full content
+          outputChannel.appendLine(`Content length: ${change.content.length} characters`);
+          break;
+        case 'delete':
+          // Show that the file was deleted
+          outputChannel.appendLine(`Last content length: ${change.lastContent.length} characters`);
+          break;
+        case 'rename':
+          // Show new file path
+          outputChannel.appendLine(`New path: ${change.newFilePath}`);
+          break;
+      }
+      
       outputChannel.appendLine(`ID: ${change.id}`);
       outputChannel.appendLine('---');
     });

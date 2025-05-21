@@ -2,21 +2,63 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 
 /**
- * Represents a raw change to a file
+ * Represents a base change to a file
  */
-export interface RawChange {
+export interface BaseChange {
   id: string;
   timestamp: string; // ISO format
   filePath: string;
+  type: 'save' | 'create' | 'delete' | 'rename';
+}
+
+/**
+ * Represents a save change to a file
+ */
+export interface SaveChange extends BaseChange {
+  type: 'save';
   oldContent: string;
   newContent: string;
 }
 
 /**
+ * Represents a file creation change
+ */
+export interface CreateChange extends BaseChange {
+  type: 'create';
+  content: string;
+}
+
+/**
+ * Represents a file deletion change
+ */
+export interface DeleteChange extends BaseChange {
+  type: 'delete';
+  lastContent: string;
+}
+
+/**
+ * Represents a file rename change
+ */
+export interface RenameChange extends BaseChange {
+  type: 'rename';
+  newFilePath: string;
+}
+
+/**
+ * Union type of all possible changes
+ */
+export type Change = SaveChange | CreateChange | DeleteChange | RenameChange;
+
+/**
+ * For backward compatibility
+ */
+export type RawChange = SaveChange;
+
+/**
  * Manages tracking changes to files in the workspace
  */
 export class ChangeTracker {
-  private changes: RawChange[] = [];
+  private changes: Change[] = [];
   private fileContentCache: Map<string, string> = new Map();
   private disposables: vscode.Disposable[] = [];
 
@@ -34,7 +76,27 @@ export class ChangeTracker {
       this.handleDocumentSave.bind(this)
     );
 
-    this.disposables.push(saveListener);
+    // Track file creations
+    const createListener = vscode.workspace.onDidCreateFiles(
+      this.handleFileCreate.bind(this)
+    );
+
+    // Track file deletions
+    const deleteListener = vscode.workspace.onDidDeleteFiles(
+      this.handleFileDelete.bind(this)
+    );
+
+    // Track file renames
+    const renameListener = vscode.workspace.onDidRenameFiles(
+      this.handleFileRename.bind(this)
+    );
+
+    this.disposables.push(
+      saveListener,
+      createListener,
+      deleteListener,
+      renameListener
+    );
     
     // Return a composite disposable that can clean up all listeners
     return vscode.Disposable.from(...this.disposables);
@@ -43,7 +105,7 @@ export class ChangeTracker {
   /**
    * Get all tracked changes
    */
-  public getChanges(): RawChange[] {
+  public getChanges(): Change[] {
     return [...this.changes];
   }
 
@@ -64,10 +126,11 @@ export class ChangeTracker {
 
     // Only track if content actually changed
     if (oldContent !== newContent) {
-      const change: RawChange = {
+      const change: SaveChange = {
         id: this.generateChangeId(),
         timestamp: new Date().toISOString(),
         filePath,
+        type: 'save',
         oldContent,
         newContent
       };
@@ -76,8 +139,7 @@ export class ChangeTracker {
       
       // Log the change for debugging purposes
       console.log(`Change tracked in ${filePath}`);
-      console.log(`Old Content: ${oldContent}`);
-      console.log(`New Content: ${newContent}`);
+      console.log(`Type: save`);
       console.log(`Change ID: ${change.id}`);
       console.log(`Timestamp: ${change.timestamp}`);
       console.log('---');
@@ -85,6 +147,118 @@ export class ChangeTracker {
 
     // Update the cache with the new content
     this.fileContentCache.set(filePath, newContent);
+  }
+
+  /**
+   * Handle file creation events
+   */
+  private async handleFileCreate(event: vscode.FileCreateEvent): Promise<void> {
+    for (const uri of event.files) {
+      try {
+        const filePath = uri.fsPath;
+        // Read the content of the created file
+        const document = await vscode.workspace.openTextDocument(uri);
+        const content = document.getText();
+
+        const change: CreateChange = {
+          id: this.generateChangeId(),
+          timestamp: new Date().toISOString(),
+          filePath,
+          type: 'create',
+          content
+        };
+
+        this.changes.push(change);
+        
+        // Add to content cache
+        this.fileContentCache.set(filePath, content);
+        
+        // Log the change for debugging purposes
+        console.log(`File created: ${filePath}`);
+        console.log(`Type: create`);
+        console.log(`Change ID: ${change.id}`);
+        console.log(`Timestamp: ${change.timestamp}`);
+        console.log('---');
+      } catch (error) {
+        console.error(`Error tracking file creation for ${uri.fsPath}:`, error);
+      }
+    }
+  }
+
+  /**
+   * Handle file deletion events
+   */
+  private handleFileDelete(event: vscode.FileDeleteEvent): void {
+    for (const uri of event.files) {
+      const filePath = uri.fsPath;
+      // Get the last content from cache before the file was deleted
+      const lastContent = this.fileContentCache.get(filePath) || '';
+
+      const change: DeleteChange = {
+        id: this.generateChangeId(),
+        timestamp: new Date().toISOString(),
+        filePath,
+        type: 'delete',
+        lastContent
+      };
+
+      this.changes.push(change);
+      
+      // Remove from content cache
+      this.fileContentCache.delete(filePath);
+      
+      // Log the change for debugging purposes
+      console.log(`File deleted: ${filePath}`);
+      console.log(`Type: delete`);
+      console.log(`Change ID: ${change.id}`);
+      console.log(`Timestamp: ${change.timestamp}`);
+      console.log('---');
+    }
+  }
+
+  /**
+   * Handle file rename events
+   */
+  private async handleFileRename(event: vscode.FileRenameEvent): Promise<void> {
+    for (const { oldUri, newUri } of event.files) {
+      try {
+        const oldFilePath = oldUri.fsPath;
+        const newFilePath = newUri.fsPath;
+        
+        // Create a rename change
+        const change: RenameChange = {
+          id: this.generateChangeId(),
+          timestamp: new Date().toISOString(),
+          filePath: oldFilePath, // Original file path
+          type: 'rename',
+          newFilePath // New file path
+        };
+
+        this.changes.push(change);
+        
+        // Update content cache with the new file path
+        const oldContent = this.fileContentCache.get(oldFilePath) || '';
+        this.fileContentCache.delete(oldFilePath);
+        
+        // Try to read the new file content 
+        try {
+          const document = await vscode.workspace.openTextDocument(newUri);
+          this.fileContentCache.set(newFilePath, document.getText());
+        } catch {
+          // If we can't open the new document, at least preserve the old content
+          this.fileContentCache.set(newFilePath, oldContent);
+        }
+        
+        // Log the change for debugging purposes
+        console.log(`File renamed: ${oldFilePath} -> ${newFilePath}`);
+        console.log(`Type: rename`);
+        console.log(`Change ID: ${change.id}`);
+        console.log(`Timestamp: ${change.timestamp}`);
+        console.log('---');
+      } catch (error) {
+        console.error(`Error tracking file rename for ${oldUri.fsPath}:`, error);
+      }
+    }
   }
 
   /**
