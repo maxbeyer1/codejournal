@@ -102,11 +102,6 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('All tracked changes have been cleared.');
   });
 
-  // Legacy Hello World command
-  const helloWorldCommand = vscode.commands.registerCommand('codejournal.helloWorld', () => {
-    vscode.window.showInformationMessage('Hello World from CodeJournal!');
-  });
-
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
@@ -115,7 +110,6 @@ export function activate(context: vscode.ExtensionContext) {
     stopSessionCommand,
     showChangesCommand,
     clearChangesCommand,
-    helloWorldCommand
   );
 }
 

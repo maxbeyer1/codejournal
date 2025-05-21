@@ -16,10 +16,6 @@
   "contributes": {
     "commands": [
       {
-        "command": "codejournal.helloWorld",
-        "title": "CodeJournal: Hello World"
-      },
-      {
         "command": "codejournal.showChanges",
         "title": "CodeJournal: Show Tracked Changes"
       },
