@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
-import { ChangeTracker, Change } from './changeTracker';
-import { SessionController, Session } from './sessions';
+import { ChangeTracker } from './changeTracker';
+import { SessionController } from './sessions';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -9,12 +9,15 @@ export function activate(context: vscode.ExtensionContext) {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   console.log('CodeJournal extension is now active');
 
-  // Create the change tracker
-  const changeTracker = new ChangeTracker();
+  // Create the session controller first
+  const sessionController = new SessionController();
+  
+  // Create the change tracker and pass the session controller
+  const changeTracker = new ChangeTracker(sessionController);
   const changeTrackerDisposable = changeTracker.start();
   
-  // Create the session controller
-  const sessionController = new SessionController();
+  // Set up bidirectional reference
+  sessionController.setChangeTracker(changeTracker);
   
   // Register session commands
   const startSessionCommand = vscode.commands.registerCommand('codejournal.startSession', () => {
@@ -48,6 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
     const currentSession = sessionController.getCurrentSession();
     if (currentSession) {
       outputChannel.appendLine(`Active session: ${currentSession.id} (started at ${currentSession.startTime})`);
+      
+      // Show changes for current session
+      const sessionChanges = changeTracker.getChangesBySession(currentSession.id);
+      outputChannel.appendLine(`Changes in current session: ${sessionChanges.length}`);
     } else {
       outputChannel.appendLine('No active session');
     }
@@ -58,6 +65,11 @@ export function activate(context: vscode.ExtensionContext) {
       outputChannel.appendLine(`Change #${index + 1} (${change.timestamp})`);
       outputChannel.appendLine(`Type: ${change.type}`);
       outputChannel.appendLine(`File: ${change.filePath}`);
+      
+      // Show session ID if available
+      if (change.sessionId) {
+        outputChannel.appendLine(`Session: ${change.sessionId}`);
+      }
       
       // Display type-specific information
       switch (change.type) {

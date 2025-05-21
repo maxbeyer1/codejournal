@@ -1,14 +1,6 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-
-/**
- * Represents a coding session
- */
-export interface Session {
-  id: string;
-  startTime: string; // ISO format
-  endTime?: string; // ISO format (undefined if session is still active)
-}
+import { Session } from './types';
 
 /**
  * Manages CodeJournal sessions
@@ -18,6 +10,7 @@ export class SessionController {
   private sessions: Session[] = [];
   private disposables: vscode.Disposable[] = [];
   private statusBarItem: vscode.StatusBarItem;
+  private changeTracker?: any; // Using 'any' to avoid circular dependency
 
   constructor() {
     // Create status bar item to show session status
@@ -27,6 +20,13 @@ export class SessionController {
     );
     this.updateStatusBar();
     this.statusBarItem.show();
+  }
+  
+  /**
+   * Set the change tracker reference
+   */
+  public setChangeTracker(changeTracker: any): void {
+    this.changeTracker = changeTracker;
   }
 
   /**
@@ -76,17 +76,53 @@ export class SessionController {
     // Update status bar
     this.updateStatusBar();
     
-    // Log for debugging
+    // Get session changes if change tracker is available
+    const sessionChanges = this.changeTracker?.getChangesBySession(this.currentSession.id) || [];
+    
+    // Log session summary for debugging
     console.log(`CodeJournal session stopped`);
     console.log(`Session ID: ${this.currentSession.id}`);
     console.log(`Start time: ${this.currentSession.startTime}`);
     console.log(`End time: ${this.currentSession.endTime}`);
     console.log(`Duration: ${this.calculateDuration(this.currentSession)} minutes`);
+    console.log(`Total changes: ${sessionChanges.length}`);
+    
+    if (sessionChanges.length > 0) {
+      // Group changes by type
+      const changesByType = this.groupChangesByType(sessionChanges);
+      
+      console.log('Changes summary:');
+      for (const [type, changes] of Object.entries(changesByType)) {
+        console.log(`- ${type}: ${changes.length} changes`);
+      }
+      
+      console.log('Change IDs:');
+      sessionChanges.forEach((change: { id: string; type: string; filePath: string }) => {
+        console.log(`- ${change.id} (${change.type}: ${change.filePath})`);
+      });
+    }
+    
     console.log('---');
     
-    vscode.window.showInformationMessage('CodeJournal session stopped.');
+    vscode.window.showInformationMessage(`CodeJournal session stopped. ${sessionChanges.length} changes recorded.`);
     
     return this.currentSession;
+  }
+  
+  /**
+   * Group changes by type
+   */
+  private groupChangesByType(changes: { type: string }[]): Record<string, { type: string }[]> {
+    const result: Record<string, { type: string }[]> = {};
+    
+    changes.forEach(change => {
+      if (!result[change.type]) {
+        result[change.type] = [];
+      }
+      result[change.type].push(change);
+    });
+    
+    return result;
   }
 
   /**
