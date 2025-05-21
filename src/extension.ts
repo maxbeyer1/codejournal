@@ -1,26 +1,60 @@
 // The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import { ChangeTracker } from './changeTracker';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  // Use the console to output diagnostic information (console.log) and errors (console.error)
+  console.log('CodeJournal extension is now active');
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "codejournal" is now active!');
+  // Create and start the change tracker
+  const changeTracker = new ChangeTracker();
+  const changeTrackerDisposable = changeTracker.start();
+  
+  // Register commands
+  const showChangesCommand = vscode.commands.registerCommand('codejournal.showChanges', () => {
+    const changes = changeTracker.getChanges();
+    if (changes.length === 0) {
+      vscode.window.showInformationMessage('No changes have been tracked yet.');
+      return;
+    }
+    
+    // Create an output channel for showing changes
+    const outputChannel = vscode.window.createOutputChannel('CodeJournal Changes', {log: true});
+    outputChannel.clear();
+    
+    // Output each change
+    changes.forEach((change, index) => {
+      outputChannel.appendLine(`Change #${index + 1} (${change.timestamp})`);
+      outputChannel.appendLine(`File: ${change.filePath}`);
+      outputChannel.appendLine(`ID: ${change.id}`);
+      outputChannel.appendLine('---');
+    });
+    
+    outputChannel.show();
+  });
+  
+  const clearChangesCommand = vscode.commands.registerCommand('codejournal.clearChanges', () => {
+    changeTracker.clearChanges();
+    vscode.window.showInformationMessage('All tracked changes have been cleared.');
+  });
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('codejournal.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from CodeJournal!');
-	});
+  // Legacy Hello World command
+  const helloWorldCommand = vscode.commands.registerCommand('codejournal.helloWorld', () => {
+    vscode.window.showInformationMessage('Hello World from CodeJournal!');
+  });
 
-	context.subscriptions.push(disposable);
+  // Add to subscriptions
+  context.subscriptions.push(
+    changeTrackerDisposable,
+    showChangesCommand,
+    clearChangesCommand,
+    helloWorldCommand
+  );
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  // Clean up resources if needed
+}

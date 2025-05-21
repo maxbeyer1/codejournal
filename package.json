@@ -9,13 +9,23 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "codejournal.helloWorld",
-        "title": "Hello World"
+        "title": "CodeJournal: Hello World"
+      },
+      {
+        "command": "codejournal.showChanges",
+        "title": "CodeJournal: Show Tracked Changes"
+      },
+      {
+        "command": "codejournal.clearChanges",
+        "title": "CodeJournal: Clear Tracked Changes"
       }
     ]
   },
