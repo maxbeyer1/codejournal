@@ -42,11 +42,6 @@ export interface RenameChange extends BaseChange {
 export type Change = SaveChange | CreateChange | DeleteChange | RenameChange;
 
 /**
- * For backward compatibility
- */
-export type RawChange = SaveChange;
-
-/**
  * Manages tracking changes to files in the workspace
  */
 export class ChangeTracker {
