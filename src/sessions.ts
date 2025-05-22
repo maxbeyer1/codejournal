@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { Session } from './types';
+import { Summarizer, SessionSummary } from './summarizer';
 
 /**
  * Manages CodeJournal sessions
@@ -11,6 +12,7 @@ export class SessionController {
   private disposables: vscode.Disposable[] = [];
   private statusBarItem: vscode.StatusBarItem;
   private changeTracker?: any; // Using 'any' to avoid circular dependency
+  private summarizer: Summarizer;
 
   constructor() {
     // Create status bar item to show session status
@@ -20,6 +22,10 @@ export class SessionController {
     );
     this.updateStatusBar();
     this.statusBarItem.show();
+
+    // Initialize the summarizer
+    this.summarizer = new Summarizer();
+    this.disposables.push(this.summarizer);
   }
   
   /**
@@ -63,7 +69,7 @@ export class SessionController {
   /**
    * Stop the current session
    */
-  public stopSession(): Session | undefined {
+  public async stopSession(): Promise<Session | undefined> {
     // If there's no active session, can't stop one
     if (!this.currentSession || this.currentSession.endTime) {
       vscode.window.showInformationMessage('No active CodeJournal session to stop.');
@@ -100,6 +106,29 @@ export class SessionController {
       sessionChanges.forEach((change: { id: string; type: string; filePath: string }) => {
         console.log(`- ${change.id} (${change.type}: ${change.filePath})`);
       });
+
+      // Generate a summary using the LLM if we have changes
+      try {
+        console.log('Generating LLM summary...');
+        const session = this.currentSession; // Capture for async closure
+        
+        // Generate the summary asynchronously
+        const summary = await this.summarizer.summarizeSession(session, sessionChanges);
+        
+        if (summary) {
+          // Log the formatted summary
+          const formattedSummary = this.summarizer.formatSummaryForConsole(summary);
+          console.log('\nLLM-GENERATED SUMMARY:');
+          console.log(formattedSummary);
+          
+          // Store the summary with the session for later use
+          (this.currentSession as any).summary = summary;
+        } else {
+          console.log('Could not generate summary - API key may not be configured.');
+        }
+      } catch (error) {
+        console.error('Error generating summary:', error);
+      }
     }
     
     console.log('---');

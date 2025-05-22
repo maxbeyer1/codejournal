@@ -27,8 +27,8 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
   
-  const stopSessionCommand = vscode.commands.registerCommand('codejournal.stopSession', () => {
-    const session = sessionController.stopSession();
+  const stopSessionCommand = vscode.commands.registerCommand('codejournal.stopSession', async () => {
+    const session = await sessionController.stopSession();
     if (session) {
       console.log(`Stopped session with ID: ${session.id}`);
       console.log(`Session duration: ${new Date(session.endTime!).getTime() - new Date(session.startTime).getTime()} ms`);

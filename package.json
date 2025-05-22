@@ -31,7 +31,17 @@
         "command": "codejournal.stopSession",
         "title": "CodeJournal: Stop Recording Session"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "CodeJournal",
+      "properties": {
+        "codejournal.anthropicApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for Anthropic Claude services"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "pnpm run compile",
@@ -41,16 +51,22 @@
     "lint": "eslint src",
     "test": "vscode-test"
   },
+  "dependencies": {
+    "@ai-sdk/anthropic": "2.0.0-alpha.3",
+    "ai": "5.0.0-alpha.3",
+    "dotenv": "^16.5.0",
+    "zod": "^3.25.20"
+  },
   "devDependencies": {
-    "@types/vscode": "^1.100.0",
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.100.0",
     "@typescript-eslint/eslint-plugin": "^8.31.1",
     "@typescript-eslint/parser": "^8.31.1",
-    "eslint": "^9.25.1",
-    "typescript": "^5.8.3",
     "@vscode/test-cli": "^0.0.10",
-    "@vscode/test-electron": "^2.5.2"
+    "@vscode/test-electron": "^2.5.2",
+    "eslint": "^9.25.1",
+    "typescript": "^5.8.3"
   },
   "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }

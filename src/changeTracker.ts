@@ -340,7 +340,7 @@ export class ChangeTracker {
     // Add listener for closed documents
     const closeListener = vscode.workspace.onDidCloseTextDocument(document => {
       // Optionally, we can free up memory by removing closed files from cache
-      // Only do this if you don't need to track changes across editor sessions
+      // Need to evaluate this more
       // this.fileContentCache.delete(document.uri.fsPath);
     });
 
