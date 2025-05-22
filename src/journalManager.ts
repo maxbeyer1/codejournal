@@ -103,7 +103,11 @@ export class JournalManager {
    * Format a session summary for the journal file
    */
   private formatSummaryForJournal(summary: SessionSummary): string {
-    let output = `## Session ${summary.startTime}\n\n`;
+    // Format the ISO timestamp to a more readable format
+    const date = new Date(summary.startTime);
+    const formattedDate = date.toISOString().replace('T', ' at ').replace(/\.\d+Z$/, '');
+    
+    let output = `## Session ${formattedDate}\n\n`;
     
     summary.files.forEach(file => {
       output += `### ${file.filePath}\n`;
