@@ -1,0 +1,148 @@
+import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import { SessionSummary } from './summarizer';
+
+/**
+ * Manages the CodeJournal log file
+ */
+export class JournalManager {
+  private disposed = false;
+
+  constructor() {
+    // Init
+  }
+
+  /**
+   * Add a session summary to the journal file
+   */
+  public async addToJournal(summary: SessionSummary): Promise<boolean> {
+    if (this.disposed) {
+      console.log('Cannot add to journal: manager disposed');
+      return false;
+    }
+
+    try {
+      // Get the configured journal file path or use default
+      const journalPath = this.getJournalFilePath();
+      
+      // Format the summary for the journal
+      const formattedSummary = this.formatSummaryForJournal(summary);
+      
+      // Append to the journal file in reverse chronological order
+      await this.updateJournalFile(journalPath, formattedSummary);
+      
+      console.log(`Session summary added to journal at ${journalPath}`);
+      return true;
+    } catch (error) {
+      console.error('Error adding to journal:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Get the journal file path from settings or use default
+   */
+  private getJournalFilePath(): string {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      throw new Error('No workspace folder open');
+    }
+    
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    
+    // Get configured path or use default
+    const configuredPath = vscode.workspace.getConfiguration('codejournal').get('journalFilePath');
+    
+    if (configuredPath && typeof configuredPath === 'string') {
+      // If path is absolute, use it directly
+      if (path.isAbsolute(configuredPath)) {
+        return configuredPath;
+      }
+      // Otherwise, resolve relative to workspace root
+      return path.join(rootPath, configuredPath);
+    }
+    
+    // Default path is .codejournal in the workspace root
+    return path.join(rootPath, '.codejournal');
+  }
+
+  /**
+   * Update the journal file with a new summary entry in reverse chronological order
+   */
+  private async updateJournalFile(filePath: string, summaryEntry: string): Promise<void> {
+    try {
+      let existingContent = '';
+      let header = '# CodeJournal\n\n';
+      
+      // Check if file exists
+      if (fs.existsSync(filePath)) {
+        existingContent = fs.readFileSync(filePath, 'utf8');
+        
+        // If the file already has content, handle the header differently
+        if (existingContent.startsWith('# CodeJournal')) {
+          // Remove the header from existing content for proper insertion
+          header = '';
+          existingContent = existingContent.replace('# CodeJournal\n\n', '');
+        }
+      }
+      
+      // Combine new entry with existing content
+      // Add header + new entry + existing content for reverse chronological order
+      const updatedContent = header + summaryEntry + existingContent;
+      
+      // Write the updated content back to the file
+      fs.writeFileSync(filePath, updatedContent);
+    } catch (error) {
+      console.error(`Error updating journal file at ${filePath}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Format a session summary for the journal file
+   */
+  private formatSummaryForJournal(summary: SessionSummary): string {
+    let output = `## Session ${summary.startTime}\n\n`;
+    
+    summary.files.forEach(file => {
+      output += `### ${file.filePath}\n`;
+      
+      file.changes.forEach(change => {
+        output += `- **${change.timestamp}** ${change.description}\n`;
+      });
+      
+      output += '\n';
+    });
+    
+    return output;
+  }
+
+  /**
+   * Open the journal file in the editor
+   */
+  public async openJournalFile(): Promise<void> {
+    try {
+      const journalPath = this.getJournalFilePath();
+      
+      // Create the file if it doesn't exist
+      if (!fs.existsSync(journalPath)) {
+        fs.writeFileSync(journalPath, '# CodeJournal\n\n');
+      }
+      
+      // Open the file in the editor
+      const document = await vscode.workspace.openTextDocument(journalPath);
+      await vscode.window.showTextDocument(document);
+    } catch (error) {
+      console.error('Error opening journal file:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Dispose of resources
+   */
+  public dispose(): void {
+    this.disposed = true;
+  }
+}

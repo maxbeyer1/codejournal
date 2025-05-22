@@ -30,6 +30,10 @@
       {
         "command": "codejournal.stopSession",
         "title": "CodeJournal: Stop Recording Session"
+      },
+      {
+        "command": "codejournal.openJournal",
+        "title": "CodeJournal: Open Journal File"
       }
     ],
     "configuration": {
@@ -39,6 +43,16 @@
           "type": "string",
           "default": "",
           "description": "API key for Anthropic Claude services"
+        },
+        "codejournal.anthropicModel": {
+          "type": "string",
+          "default": "claude-3-7-sonnet-latest",
+          "description": "Anthropic Claude model to use for summarization"
+        },
+        "codejournal.journalFilePath": {
+          "type": "string",
+          "default": ".codejournal",
+          "description": "Path to the journal file (relative to workspace root or absolute)"
         }
       }
     }

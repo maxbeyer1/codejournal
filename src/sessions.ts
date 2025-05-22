@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { Session } from './types';
 import { Summarizer, SessionSummary } from './summarizer';
+import { JournalManager } from './journalManager';
 
 /**
  * Manages CodeJournal sessions
@@ -13,6 +14,7 @@ export class SessionController {
   private statusBarItem: vscode.StatusBarItem;
   private changeTracker?: any; // Using 'any' to avoid circular dependency
   private summarizer: Summarizer;
+  private journalManager: JournalManager;
 
   constructor() {
     // Create status bar item to show session status
@@ -23,9 +25,10 @@ export class SessionController {
     this.updateStatusBar();
     this.statusBarItem.show();
 
-    // Initialize the summarizer
+    // Initialize the summarizer and journal manager
     this.summarizer = new Summarizer();
-    this.disposables.push(this.summarizer);
+    this.journalManager = new JournalManager();
+    this.disposables.push(this.summarizer, this.journalManager);
   }
   
   /**
@@ -123,6 +126,14 @@ export class SessionController {
           
           // Store the summary with the session for later use
           (this.currentSession as any).summary = summary;
+          
+          // Add the summary to the journal file
+          try {
+            await this.journalManager.addToJournal(summary);
+            console.log('Session summary added to journal file');
+          } catch (error) {
+            console.error('Error adding summary to journal:', error);
+          }
         } else {
           console.log('Could not generate summary - API key may not be configured.');
         }
@@ -213,6 +224,13 @@ export class SessionController {
       this.statusBarItem.tooltip = 'Start recording changes with CodeJournal';
       this.statusBarItem.command = 'codejournal.startSession';
     }
+  }
+
+  /**
+   * Open the journal file
+   */
+  public async openJournal(): Promise<void> {
+    await this.journalManager.openJournalFile();
   }
 
   /**

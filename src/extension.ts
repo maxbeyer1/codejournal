@@ -102,6 +102,17 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('All tracked changes have been cleared.');
   });
 
+  // Register command to open journal file
+  const openJournalCommand = vscode.commands.registerCommand('codejournal.openJournal', async () => {
+    try {
+      await sessionController.openJournal();
+      vscode.window.showInformationMessage('CodeJournal file opened.');
+    } catch (error) {
+      console.error('Error opening journal file:', error);
+      vscode.window.showErrorMessage('Failed to open journal file. See console for details.');
+    }
+  });
+
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
@@ -110,6 +121,7 @@ export function activate(context: vscode.ExtensionContext) {
     stopSessionCommand,
     showChangesCommand,
     clearChangesCommand,
+    openJournalCommand,
   );
 }
 
