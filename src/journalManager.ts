@@ -107,7 +107,7 @@ export class JournalManager {
     const date = new Date(summary.startTime);
     const formattedDate = date.toISOString().replace('T', ' at ').replace(/\.\d+Z$/, '');
     
-    let output = `## Session ${formattedDate}\n\n`;
+    let output = `## Session ${formattedDate} UTC\n\n`;
     
     summary.files.forEach(file => {
       output += `### ${file.filePath}\n`;
