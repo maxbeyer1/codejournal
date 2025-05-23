@@ -38,6 +38,7 @@ export class SessionTreeItem extends vscode.TreeItem {
   ) {
     super(session.title, collapsibleState);
     this.contextValue = 'session';
+    this.iconPath = new vscode.ThemeIcon('history');
     this.description = `${session.files.length} file${session.files.length !== 1 ? 's' : ''}`;
   }
 }
@@ -55,8 +56,17 @@ export class FileTreeItem extends vscode.TreeItem {
     const label = sessionTitle ? sessionTitle : fileName;
     super(label, collapsibleState);
     this.contextValue = 'file';
+    this.iconPath = new vscode.ThemeIcon('file');
     this.tooltip = file.filePath;
     this.description = `${file.changes.length} change${file.changes.length !== 1 ? 's' : ''}`;
+    
+    // Store resource URI for potential file opening
+    this.resourceUri = vscode.Uri.file(file.filePath);
+    this.command = {
+      command: 'codejournal.openFile',
+      title: 'Open File',
+      arguments: [file.filePath]
+    };
   }
 }
 
@@ -67,6 +77,7 @@ export class ChangeTreeItem extends vscode.TreeItem {
   constructor(public readonly change: JournalChange) {
     super(`${change.timestamp} ${change.description}`, vscode.TreeItemCollapsibleState.None);
     this.contextValue = 'change';
+    this.iconPath = new vscode.ThemeIcon('edit');
     this.tooltip = change.description;
   }
 }
