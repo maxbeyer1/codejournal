@@ -8,7 +8,7 @@ import { Session } from './types';
 import { Change } from './changeTracker';
 
 /**
- * Zod schema for a change summary entry
+ * Schema for a change summary entry
  */
 const ChangeSummarySchema = z.object({
   timestamp: z.string().describe("The timestamp of the change in HH:MM:SS format"),
@@ -16,7 +16,7 @@ const ChangeSummarySchema = z.object({
 });
 
 /**
- * Zod schema for a file with its summarized changes
+ * Schema for a file with its summarized changes
  */
 const FileSummarySchema = z.object({
   filePath: z.string().describe("The path to the file"),
@@ -24,7 +24,7 @@ const FileSummarySchema = z.object({
 });
 
 /**
- * Zod schema for the complete summary structure
+ * Schema for the complete summary structure
  */
 const SummarySchema = z.object({
   files: z.array(FileSummarySchema).describe("List of files with their changes")
@@ -51,7 +51,7 @@ export interface SessionSummary {
 }
 
 /**
- * The Summarizer class handles generating summaries of code changes
+ * Handles generating summaries of code changes
  */
 export class Summarizer {
   private disposed = false;
@@ -216,6 +216,8 @@ Changes by file:
             } else {
               // Show a sample of the diff instead
               prompt += "Changes too large to include in full.\n";
+              prompt += `Old content: ${oldLines.slice(0, 5).join('\n')}\n...\n`;
+              prompt += `New content: ${newLines.slice(0, 5).join('\n')}\n...\n`;
             }
             break;
             
