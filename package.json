@@ -69,6 +69,12 @@
         }
       ]
     },
+    "viewsWelcome": [
+      {
+        "view": "codejournal",
+        "contents": "No journal entries found.\n\n[Start Recording Session](command:codejournal.startSession)\n\nStart a session to begin tracking changes, then stop it to generate journal entries."
+      }
+    ],
     "configuration": {
       "title": "CodeJournal",
       "properties": {

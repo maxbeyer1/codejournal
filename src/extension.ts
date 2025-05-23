@@ -131,6 +131,26 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage(`Journal view mode: ${modeText}`);
   });
 
+  // Register open file command
+  const openFileCommand = vscode.commands.registerCommand('codejournal.openFile', async (filePath: string) => {
+    try {
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showErrorMessage('No workspace folder open');
+        return;
+      }
+      
+      const rootPath = workspaceFolders[0].uri.fsPath;
+      const fullPath = filePath.startsWith('/') ? filePath : `${rootPath}/${filePath}`;
+      
+      const document = await vscode.workspace.openTextDocument(fullPath);
+      await vscode.window.showTextDocument(document);
+    } catch (error) {
+      console.error('Error opening file:', error);
+      vscode.window.showErrorMessage(`Failed to open file: ${filePath}`);
+    }
+  });
+
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
@@ -142,6 +162,7 @@ export function activate(context: vscode.ExtensionContext) {
     openJournalCommand,
     refreshJournalCommand,
     toggleViewModeCommand,
+    openFileCommand,
   );
 }
 

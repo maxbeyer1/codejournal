@@ -61,7 +61,14 @@ export class FileTreeItem extends vscode.TreeItem {
     this.description = `${file.changes.length} change${file.changes.length !== 1 ? 's' : ''}`;
     
     // Store resource URI for potential file opening
-    this.resourceUri = vscode.Uri.file(file.filePath);
+    // Handle both absolute and relative paths
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    let fullPath = file.filePath;
+    if (workspaceFolders && workspaceFolders.length > 0 && !file.filePath.startsWith('/')) {
+      fullPath = `${workspaceFolders[0].uri.fsPath}/${file.filePath}`;
+    }
+    
+    this.resourceUri = vscode.Uri.file(fullPath);
     this.command = {
       command: 'codejournal.openFile',
       title: 'Open File',
@@ -103,6 +110,10 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
   getChildren(element?: SessionTreeItem | FileTreeItem | ChangeTreeItem): Thenable<(SessionTreeItem | FileTreeItem | ChangeTreeItem)[]> {
     if (!element) {
       // Root level - return based on view mode
+      if (this.sessions.length === 0) {
+        return Promise.resolve([]);
+      }
+      
       if (this.viewMode === JournalViewMode.BySession) {
         return Promise.resolve(this.sessions.map(session => 
           new SessionTreeItem(session, vscode.TreeItemCollapsibleState.Collapsed)
