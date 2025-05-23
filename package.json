@@ -43,8 +43,32 @@
       {
         "command": "codejournal.openJournal",
         "title": "CodeJournal: Open Journal File"
+      },
+      {
+        "command": "codejournal.refreshJournal",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codejournal.toggleViewMode",
+        "title": "Toggle View Mode",
+        "icon": "$(list-tree)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codejournal.refreshJournal",
+          "when": "view == codejournal",
+          "group": "navigation"
+        },
+        {
+          "command": "codejournal.toggleViewMode",
+          "when": "view == codejournal",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "CodeJournal",
       "properties": {

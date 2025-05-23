@@ -2,7 +2,7 @@
 import * as vscode from 'vscode';
 import { ChangeTracker } from './changeTracker';
 import { SessionController } from './sessions';
-import { JournalTreeDataProvider } from './journalTreeView';
+import { JournalTreeDataProvider, JournalViewMode } from './journalTreeView';
 
 // Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -115,6 +115,22 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // Register journal refresh command
+  const refreshJournalCommand = vscode.commands.registerCommand('codejournal.refreshJournal', () => {
+    journalTreeDataProvider.refresh();
+    vscode.window.showInformationMessage('Journal refreshed.');
+  });
+
+  // Register toggle view mode command
+  const toggleViewModeCommand = vscode.commands.registerCommand('codejournal.toggleViewMode', () => {
+    const currentMode = journalTreeDataProvider.getViewMode();
+    const newMode = currentMode === JournalViewMode.BySession ? JournalViewMode.ByFile : JournalViewMode.BySession;
+    journalTreeDataProvider.setViewMode(newMode);
+    
+    const modeText = newMode === JournalViewMode.BySession ? 'by session' : 'by file';
+    vscode.window.showInformationMessage(`Journal view mode: ${modeText}`);
+  });
+
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
@@ -124,6 +140,8 @@ export function activate(context: vscode.ExtensionContext) {
     showChangesCommand,
     clearChangesCommand,
     openJournalCommand,
+    refreshJournalCommand,
+    toggleViewModeCommand,
   );
 }
 

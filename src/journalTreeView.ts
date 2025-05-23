@@ -3,6 +3,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
+ * View mode for organizing journal entries
+ */
+export enum JournalViewMode {
+  BySession = 'bySession',
+  ByFile = 'byFile'
+}
+
+/**
  * Simple interfaces for journal data
  */
 export interface JournalSession {
@@ -40,10 +48,12 @@ export class SessionTreeItem extends vscode.TreeItem {
 export class FileTreeItem extends vscode.TreeItem {
   constructor(
     public readonly file: JournalFile,
+    public readonly sessionTitle?: string,
     public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed
   ) {
     const fileName = file.filePath.split('/').pop() || file.filePath;
-    super(fileName, collapsibleState);
+    const label = sessionTitle ? sessionTitle : fileName;
+    super(label, collapsibleState);
     this.contextValue = 'file';
     this.tooltip = file.filePath;
     this.description = `${file.changes.length} change${file.changes.length !== 1 ? 's' : ''}`;
@@ -69,6 +79,7 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
   readonly onDidChangeTreeData: vscode.Event<SessionTreeItem | FileTreeItem | ChangeTreeItem | undefined | null | void> = this._onDidChangeTreeData.event;
 
   private sessions: JournalSession[] = [];
+  private viewMode: JournalViewMode = JournalViewMode.BySession;
 
   constructor() {
     this.loadJournalData();
@@ -80,10 +91,14 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
 
   getChildren(element?: SessionTreeItem | FileTreeItem | ChangeTreeItem): Thenable<(SessionTreeItem | FileTreeItem | ChangeTreeItem)[]> {
     if (!element) {
-      // Root level - return sessions
-      return Promise.resolve(this.sessions.map(session => 
-        new SessionTreeItem(session, vscode.TreeItemCollapsibleState.Collapsed)
-      ));
+      // Root level - return based on view mode
+      if (this.viewMode === JournalViewMode.BySession) {
+        return Promise.resolve(this.sessions.map(session => 
+          new SessionTreeItem(session, vscode.TreeItemCollapsibleState.Collapsed)
+        ));
+      } else {
+        return Promise.resolve(this.getFilesByMode());
+      }
     }
 
     if (element instanceof SessionTreeItem) {
@@ -94,10 +109,16 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
     }
 
     if (element instanceof FileTreeItem) {
-      // Return changes for this file
-      return Promise.resolve(element.file.changes.map(change => 
-        new ChangeTreeItem(change)
-      ));
+      // In ByFile mode, we need to show sessions under files
+      if (this.viewMode === JournalViewMode.ByFile && !element.sessionTitle) {
+        // This is a top-level file item, show sessions that modified this file
+        return Promise.resolve(this.getSessionsForFile(element.file.filePath));
+      } else {
+        // Return changes for this file
+        return Promise.resolve(element.file.changes.map(change => 
+          new ChangeTreeItem(change)
+        ));
+      }
     }
 
     return Promise.resolve([]);
@@ -200,6 +221,65 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
     }
     
     return sessions;
+  }
+
+  /**
+   * Get files organized by file (for ByFile mode)
+   */
+  private getFilesByMode(): FileTreeItem[] {
+    const fileMap = new Map<string, JournalFile>();
+    
+    // Aggregate all changes for each file across all sessions
+    this.sessions.forEach(session => {
+      session.files.forEach(file => {
+        if (fileMap.has(file.filePath)) {
+          const existingFile = fileMap.get(file.filePath)!;
+          existingFile.changes.push(...file.changes);
+        } else {
+          fileMap.set(file.filePath, {
+            filePath: file.filePath,
+            changes: [...file.changes]
+          });
+        }
+      });
+    });
+
+    return Array.from(fileMap.values()).map(file => 
+      new FileTreeItem(file)
+    );
+  }
+
+  /**
+   * Get sessions that modified a specific file (for ByFile mode)
+   */
+  private getSessionsForFile(filePath: string): FileTreeItem[] {
+    const sessionFiles: FileTreeItem[] = [];
+    
+    this.sessions.forEach(session => {
+      const fileInSession = session.files.find(f => f.filePath === filePath);
+      if (fileInSession) {
+        sessionFiles.push(
+          new FileTreeItem(fileInSession, session.title, vscode.TreeItemCollapsibleState.Collapsed)
+        );
+      }
+    });
+
+    return sessionFiles;
+  }
+
+  /**
+   * Set the view mode and refresh
+   */
+  setViewMode(mode: JournalViewMode): void {
+    this.viewMode = mode;
+    this.refresh();
+  }
+
+  /**
+   * Get current view mode
+   */
+  getViewMode(): JournalViewMode {
+    return this.viewMode;
   }
 
   /**
