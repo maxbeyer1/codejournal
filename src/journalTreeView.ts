@@ -56,24 +56,30 @@ export class FileTreeItem extends vscode.TreeItem {
     const label = sessionTitle ? sessionTitle : fileName;
     super(label, collapsibleState);
     this.contextValue = 'file';
-    this.iconPath = new vscode.ThemeIcon('file');
-    this.tooltip = file.filePath;
+    
+    // Use session icon when this represents a session under a file, otherwise use file icon
+    this.iconPath = new vscode.ThemeIcon(sessionTitle ? 'history' : 'file');
+    
+    this.tooltip = sessionTitle ? `${sessionTitle} - ${file.filePath}` : file.filePath;
     this.description = `${file.changes.length} change${file.changes.length !== 1 ? 's' : ''}`;
     
-    // Store resource URI for potential file opening
-    // Handle both absolute and relative paths
-    const workspaceFolders = vscode.workspace.workspaceFolders;
-    let fullPath = file.filePath;
-    if (workspaceFolders && workspaceFolders.length > 0 && !file.filePath.startsWith('/')) {
-      fullPath = `${workspaceFolders[0].uri.fsPath}/${file.filePath}`;
+    // Only add file opening functionality for actual files (not sessions)
+    if (!sessionTitle) {
+      // Store resource URI for potential file opening
+      // Handle both absolute and relative paths
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      let fullPath = file.filePath;
+      if (workspaceFolders && workspaceFolders.length > 0 && !file.filePath.startsWith('/')) {
+        fullPath = `${workspaceFolders[0].uri.fsPath}/${file.filePath}`;
+      }
+      
+      this.resourceUri = vscode.Uri.file(fullPath);
+      this.command = {
+        command: 'codejournal.openFile',
+        title: 'Open File',
+        arguments: [file.filePath]
+      };
     }
-    
-    this.resourceUri = vscode.Uri.file(fullPath);
-    this.command = {
-      command: 'codejournal.openFile',
-      title: 'Open File',
-      arguments: [file.filePath]
-    };
   }
 }
 
