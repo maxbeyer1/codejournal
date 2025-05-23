@@ -3,16 +3,13 @@ import * as vscode from 'vscode';
 import { ChangeTracker } from './changeTracker';
 import { SessionController } from './sessions';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
+// Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
-  // Use the console to output diagnostic information (console.log) and errors (console.error)
   console.log('CodeJournal extension is now active');
 
-  // Create the session controller first
+  // Create initial instances
   const sessionController = new SessionController();
   
-  // Create the change tracker and pass the session controller
   const changeTracker = new ChangeTracker(sessionController);
   const changeTrackerDisposable = changeTracker.start();
   
@@ -125,7 +122,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-// This method is called when your extension is deactivated
+// Called when extension is deactivated
 export function deactivate() {
   // Clean up resources if needed
 }

@@ -17,7 +17,7 @@ export interface Session {
 export type ChangeType = 'save' | 'create' | 'delete' | 'rename';
 
 /**
- * Represents a base change to a file
+ * Base change to a file
  */
 export interface BaseChange {
   id: string;

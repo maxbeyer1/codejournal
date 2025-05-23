@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
 import { Session } from './types';
-import { Summarizer, SessionSummary } from './summarizer';
+import { Summarizer } from './summarizer';
 import { JournalManager } from './journalManager';
 
 /**
@@ -12,7 +12,7 @@ export class SessionController {
   private sessions: Session[] = [];
   private disposables: vscode.Disposable[] = [];
   private statusBarItem: vscode.StatusBarItem;
-  private changeTracker?: any; // Using 'any' to avoid circular dependency
+  private changeTracker?: any; // Using any to avoid circular dependency
   private summarizer: Summarizer;
   private journalManager: JournalManager;
 
@@ -58,7 +58,6 @@ export class SessionController {
     // Update status bar
     this.updateStatusBar();
     
-    // Log for debugging
     console.log(`CodeJournal session started`);
     console.log(`Session ID: ${this.currentSession.id}`);
     console.log(`Start time: ${this.currentSession.startTime}`);
@@ -119,7 +118,6 @@ export class SessionController {
         const summary = await this.summarizer.summarizeSession(session, sessionChanges);
         
         if (summary) {
-          // Log the formatted summary
           const formattedSummary = this.summarizer.formatSummaryForConsole(summary);
           console.log('\nLLM-GENERATED SUMMARY:');
           console.log(formattedSummary);

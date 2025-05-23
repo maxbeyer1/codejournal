@@ -4,7 +4,7 @@ import { BaseChange, ChangeType } from './types';
 import { SessionController } from './sessions';
 
 /**
- * Represents a save change to a file
+ * Save change to a file
  */
 export interface SaveChange extends BaseChange {
   type: 'save';
@@ -13,7 +13,7 @@ export interface SaveChange extends BaseChange {
 }
 
 /**
- * Represents a file creation change
+ * File creation change
  */
 export interface CreateChange extends BaseChange {
   type: 'create';
@@ -21,7 +21,7 @@ export interface CreateChange extends BaseChange {
 }
 
 /**
- * Represents a file deletion change
+ * File deletion change
  */
 export interface DeleteChange extends BaseChange {
   type: 'delete';
@@ -29,7 +29,7 @@ export interface DeleteChange extends BaseChange {
 }
 
 /**
- * Represents a file rename change
+ * File rename change
  */
 export interface RenameChange extends BaseChange {
   type: 'rename';
@@ -52,7 +52,7 @@ export class ChangeTracker {
 
   constructor(sessionController?: SessionController) {
     this.sessionController = sessionController;
-    // Initialize file content cache with currently open documents
+    // Init file content cache with currently open documents
     this.initializeContentCache();
   }
 
@@ -60,22 +60,19 @@ export class ChangeTracker {
    * Start tracking changes in the workspace
    */
   public start(): vscode.Disposable {
-    // Track file saves
+    // Initialize listeners for file changes
     const saveListener = vscode.workspace.onDidSaveTextDocument(
       this.handleDocumentSave.bind(this)
     );
 
-    // Track file creations
     const createListener = vscode.workspace.onDidCreateFiles(
       this.handleFileCreate.bind(this)
     );
 
-    // Track file deletions
     const deleteListener = vscode.workspace.onDidDeleteFiles(
       this.handleFileDelete.bind(this)
     );
 
-    // Track file renames
     const renameListener = vscode.workspace.onDidRenameFiles(
       this.handleFileRename.bind(this)
     );
@@ -156,7 +153,6 @@ export class ChangeTracker {
 
       this.changes.push(change);
       
-      // Log the change for debugging purposes
       console.log(`Change tracked in ${filePath}`);
       console.log(`Type: save`);
       console.log(`Change ID: ${change.id}`);
@@ -164,7 +160,6 @@ export class ChangeTracker {
       console.log(`Timestamp: ${change.timestamp}`);
       console.log('---');
     } else if (oldContent !== newContent && !isSessionActive) {
-      // Log why we're not tracking this change (debugging purposes)
       console.log(`Change not tracked in ${filePath} (no active session)`);
     }
 
@@ -215,7 +210,6 @@ export class ChangeTracker {
         // Add to content cache
         this.fileContentCache.set(filePath, content);
         
-        // Log the change for debugging purposes
         console.log(`File created: ${filePath}`);
         console.log(`Type: create`);
         console.log(`Change ID: ${change.id}`);
@@ -253,7 +247,6 @@ export class ChangeTracker {
 
         this.changes.push(change);
         
-        // Log the change for debugging purposes
         console.log(`File deleted: ${filePath}`);
         console.log(`Type: delete`);
         console.log(`Change ID: ${change.id}`);
@@ -308,7 +301,6 @@ export class ChangeTracker {
   
           this.changes.push(change);
           
-          // Log the change for debugging purposes
           console.log(`File renamed: ${oldFilePath} -> ${newFilePath}`);
           console.log(`Type: rename`);
           console.log(`Change ID: ${change.id}`);
@@ -340,7 +332,7 @@ export class ChangeTracker {
     // Add listener for closed documents
     const closeListener = vscode.workspace.onDidCloseTextDocument(document => {
       // Optionally, we can free up memory by removing closed files from cache
-      // Need to evaluate this more
+      // TODO: Need to evaluate this more
       // this.fileContentCache.delete(document.uri.fsPath);
     });
 

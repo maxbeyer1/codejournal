@@ -23,13 +23,13 @@ export class JournalManager {
     }
 
     try {
-      // Get the configured journal file path or use default
+      // Get the configured journal path or use default
       const journalPath = this.getJournalFilePath();
       
-      // Format the summary for the journal
+      // Format the summary
       const formattedSummary = this.formatSummaryForJournal(summary);
       
-      // Append to the journal file in reverse chronological order
+      // Append to journal
       await this.updateJournalFile(journalPath, formattedSummary);
       
       console.log(`Session summary added to journal at ${journalPath}`);
@@ -79,7 +79,7 @@ export class JournalManager {
       if (fs.existsSync(filePath)) {
         existingContent = fs.readFileSync(filePath, 'utf8');
         
-        // If the file already has content, handle the header differently
+        // If the file already has content
         if (existingContent.startsWith('# CodeJournal')) {
           // Remove the header from existing content for proper insertion
           header = '';
