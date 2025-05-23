@@ -2,6 +2,7 @@
 import * as vscode from 'vscode';
 import { ChangeTracker } from './changeTracker';
 import { SessionController } from './sessions';
+import { JournalTreeDataProvider } from './journalTreeView';
 
 // Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -15,6 +16,10 @@ export function activate(context: vscode.ExtensionContext) {
   
   // Set up bidirectional reference
   sessionController.setChangeTracker(changeTracker);
+  
+  // Create and register journal tree view
+  const journalTreeDataProvider = new JournalTreeDataProvider();
+  vscode.window.registerTreeDataProvider('codejournal', journalTreeDataProvider);
   
   // Register session commands
   const startSessionCommand = vscode.commands.registerCommand('codejournal.startSession', () => {
