@@ -252,29 +252,59 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
   }
 
   /**
+   * Normalize file path to relative path for consistent comparison
+   */
+  private normalizeFilePath(filePath: string): string {
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders || workspaceFolders.length === 0) {
+      return filePath.trim();
+    }
+    
+    const rootPath = workspaceFolders[0].uri.fsPath;
+    const cleanPath = filePath.trim();
+    
+    // If it's an absolute path within the workspace, make it relative
+    if (cleanPath.startsWith(rootPath)) {
+      return cleanPath.substring(rootPath.length + 1); // +1 to remove the leading slash
+    }
+    
+    return cleanPath;
+  }
+
+  /**
    * Get files organized by file (for ByFile mode)
    */
   private getFilesByMode(): FileTreeItem[] {
-    const fileMap = new Map<string, JournalFile>();
+    const filePathsMap = new Map<string, string>(); // normalized path -> original path
     
-    // Aggregate all changes for each file across all sessions
+    // Collect unique file paths across all sessions
     this.sessions.forEach(session => {
       session.files.forEach(file => {
-        if (fileMap.has(file.filePath)) {
-          const existingFile = fileMap.get(file.filePath)!;
-          existingFile.changes.push(...file.changes);
-        } else {
-          fileMap.set(file.filePath, {
-            filePath: file.filePath,
-            changes: [...file.changes]
-          });
+        const normalizedPath = this.normalizeFilePath(file.filePath);
+        // Store the first occurrence of the path (could be relative or absolute)
+        if (!filePathsMap.has(normalizedPath)) {
+          filePathsMap.set(normalizedPath, file.filePath.trim());
         }
       });
     });
 
-    return Array.from(fileMap.values()).map(file => 
-      new FileTreeItem(file)
-    );
+    // Create file items with total change count across all sessions
+    return Array.from(filePathsMap.entries()).map(([normalizedPath, originalPath]) => {
+      let totalChanges = 0;
+      this.sessions.forEach(session => {
+        const fileInSession = session.files.find(f => 
+          this.normalizeFilePath(f.filePath) === normalizedPath
+        );
+        if (fileInSession) {
+          totalChanges += fileInSession.changes.length;
+        }
+      });
+
+      return new FileTreeItem({
+        filePath: normalizedPath, // Use normalized path for consistency
+        changes: new Array(totalChanges).fill(null) // Placeholder for count display
+      });
+    });
   }
 
   /**
@@ -282,9 +312,12 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
    */
   private getSessionsForFile(filePath: string): FileTreeItem[] {
     const sessionFiles: FileTreeItem[] = [];
+    const normalizedTargetPath = this.normalizeFilePath(filePath);
     
     this.sessions.forEach(session => {
-      const fileInSession = session.files.find(f => f.filePath === filePath);
+      const fileInSession = session.files.find(f => 
+        this.normalizeFilePath(f.filePath) === normalizedTargetPath
+      );
       if (fileInSession) {
         sessionFiles.push(
           new FileTreeItem(fileInSession, session.title, vscode.TreeItemCollapsibleState.Collapsed)
