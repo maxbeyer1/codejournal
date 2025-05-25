@@ -154,6 +154,67 @@ export function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // Register navigate to edit command
+  const navigateToEditCommand = vscode.commands.registerCommand('codejournal.navigateToEdit', async (change: any, sessionTitle?: string, filePath?: string) => {
+    try {
+      // Validate input parameters
+      if (!change || !change.timestamp || !change.description) {
+        vscode.window.showErrorMessage('Invalid edit information');
+        return;
+      }
+      
+      // Calculate the line number of the edit
+      const lineNumber = journalTreeDataProvider.calculateEditLineNumber(change, sessionTitle, filePath);
+      
+      if (lineNumber === null) {
+        vscode.window.showWarningMessage('Could not locate edit in journal file. The journal may have been modified or the edit may no longer exist.');
+        return;
+      }
+      
+      // Open the journal file
+      await sessionController.openJournal();
+      
+      // Get the active editor (should be the journal file)
+      const activeEditor = vscode.window.activeTextEditor;
+      if (!activeEditor) {
+        vscode.window.showErrorMessage('Failed to open journal file');
+        return;
+      }
+      
+      // Validate that the target line exists in the document
+      const totalLines = activeEditor.document.lineCount;
+      if (lineNumber > totalLines) {
+        vscode.window.showWarningMessage('Edit location is beyond the end of the journal file');
+        return;
+      }
+      
+      // Navigate to the specific line (VS Code uses 0-based line numbers)
+      const targetLine = lineNumber - 1;
+      const range = new vscode.Range(targetLine, 0, targetLine, 0);
+      const selection = new vscode.Selection(targetLine, 0, targetLine, 0);
+      
+      activeEditor.selection = selection;
+      activeEditor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+      
+      // Optionally highlight the line briefly
+      const decoration = vscode.window.createTextEditorDecorationType({
+        backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
+        isWholeLine: true
+      });
+      
+      activeEditor.setDecorations(decoration, [range]);
+      
+      // Remove highlight after 2 seconds
+      setTimeout(() => {
+        decoration.dispose();
+      }, 2000);
+      
+    } catch (error) {
+      console.error('Error navigating to edit:', error);
+      vscode.window.showErrorMessage(`Failed to navigate to edit: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  });
+
   // Add to subscriptions
   context.subscriptions.push(
     changeTrackerDisposable,
@@ -166,6 +227,7 @@ export function activate(context: vscode.ExtensionContext) {
     refreshJournalCommand,
     toggleViewModeCommand,
     openFileCommand,
+    navigateToEditCommand,
   );
 }
 

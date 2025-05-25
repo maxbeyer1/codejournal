@@ -50,7 +50,8 @@ export class FileTreeItem extends vscode.TreeItem {
   constructor(
     public readonly file: JournalFile,
     public readonly sessionTitle?: string,
-    public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed
+    public readonly collapsibleState: vscode.TreeItemCollapsibleState = vscode.TreeItemCollapsibleState.Collapsed,
+    public readonly parentSessionTitle?: string
   ) {
     const fileName = file.filePath.split('/').pop() || file.filePath;
     const label = sessionTitle ? sessionTitle : fileName;
@@ -87,11 +88,22 @@ export class FileTreeItem extends vscode.TreeItem {
  * Tree item for changes
  */
 export class ChangeTreeItem extends vscode.TreeItem {
-  constructor(public readonly change: JournalChange) {
+  constructor(
+    public readonly change: JournalChange,
+    public readonly sessionTitle?: string,
+    public readonly filePath?: string
+  ) {
     super(`${change.timestamp} ${change.description}`, vscode.TreeItemCollapsibleState.None);
     this.contextValue = 'change';
     this.iconPath = new vscode.ThemeIcon('edit');
     this.tooltip = change.description;
+    
+    // Add command to navigate to this edit in the journal file
+    this.command = {
+      command: 'codejournal.navigateToEdit',
+      title: 'Navigate to Edit',
+      arguments: [change, sessionTitle, filePath]
+    };
   }
 }
 
@@ -132,7 +144,7 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
     if (element instanceof SessionTreeItem) {
       // Return files for this session
       return Promise.resolve(element.session.files.map(file => 
-        new FileTreeItem(file)
+        new FileTreeItem(file, undefined, vscode.TreeItemCollapsibleState.Collapsed, element.session.title)
       ));
     }
 
@@ -143,8 +155,9 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
         return Promise.resolve(this.getSessionsForFile(element.file.filePath));
       } else {
         // Return changes for this file
+        const sessionTitle = element.sessionTitle || element.parentSessionTitle;
         return Promise.resolve(element.file.changes.map(change => 
-          new ChangeTreeItem(change)
+          new ChangeTreeItem(change, sessionTitle, element.file.filePath)
         ));
       }
     }
@@ -289,7 +302,7 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
     });
 
     // Create file items with total change count across all sessions
-    return Array.from(filePathsMap.entries()).map(([normalizedPath, originalPath]) => {
+    return Array.from(filePathsMap.entries()).map(([normalizedPath]) => {
       let totalChanges = 0;
       this.sessions.forEach(session => {
         const fileInSession = session.files.find(f => 
@@ -341,6 +354,90 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
    */
   getViewMode(): JournalViewMode {
     return this.viewMode;
+  }
+
+  /**
+   * Calculate the line number of a specific edit in the journal file
+   */
+  public calculateEditLineNumber(change: JournalChange, sessionTitle?: string, filePath?: string): number | null {
+    try {
+      const journalPath = this.getJournalFilePath();
+      
+      if (!fs.existsSync(journalPath)) {
+        return null;
+      }
+
+      const content = fs.readFileSync(journalPath, 'utf8');
+      const lines = content.split('\n');
+      
+      let currentLineNumber = 1;
+      let foundSession = false;
+      let foundFile = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        currentLineNumber = i + 1;
+        
+        // Look for session header
+        if (line.startsWith('## Session ') && sessionTitle) {
+          const lineSessionTitle = line.substring(3); // Remove "## "
+          if (lineSessionTitle === sessionTitle) {
+            foundSession = true;
+            continue;
+          } else if (foundSession) {
+            // We've moved to a different session, stop looking
+            break;
+          }
+        }
+        
+        // Look for file header within the correct session
+        if (line.startsWith('### ') && foundSession && filePath) {
+          const lineFilePath = line.substring(4); // Remove "### "
+          const normalizedLineFilePath = this.normalizeFilePath(lineFilePath);
+          const normalizedTargetFilePath = this.normalizeFilePath(filePath);
+          
+          if (normalizedLineFilePath === normalizedTargetFilePath) {
+            foundFile = true;
+            continue;
+          } else if (foundFile) {
+            // We've moved to a different file within the same session
+            foundFile = false;
+          }
+        }
+        
+        // Look for the specific edit within the correct file
+        if (line.startsWith('- **') && foundSession && foundFile) {
+          const match = line.match(/^- \*\*([^*]+)\*\* (.+)$/);
+          if (match) {
+            const lineTimestamp = match[1];
+            const lineDescription = match[2];
+            
+            // Match by timestamp and description
+            if (lineTimestamp === change.timestamp && lineDescription === change.description) {
+              return currentLineNumber;
+            }
+          }
+        }
+        
+        // If we're looking without session context, try to match any edit
+        if (!sessionTitle && line.startsWith('- **')) {
+          const match = line.match(/^- \*\*([^*]+)\*\* (.+)$/);
+          if (match) {
+            const lineTimestamp = match[1];
+            const lineDescription = match[2];
+            
+            if (lineTimestamp === change.timestamp && lineDescription === change.description) {
+              return currentLineNumber;
+            }
+          }
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error calculating edit line number:', error);
+      return null;
+    }
   }
 
   /**
