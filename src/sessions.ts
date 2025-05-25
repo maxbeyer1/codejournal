@@ -15,6 +15,7 @@ export class SessionController {
   private changeTracker?: any; // Using any to avoid circular dependency
   private summarizer: Summarizer;
   private journalManager: JournalManager;
+  private isSummarizing: boolean = false;
 
   constructor() {
     // Create status bar item to show session status
@@ -112,6 +113,11 @@ export class SessionController {
       // Generate a summary using the LLM if we have changes
       try {
         console.log('Generating LLM summary...');
+        
+        // Set loading state and update status bar
+        this.isSummarizing = true;
+        this.updateStatusBar();
+        
         const session = this.currentSession; // Capture for async closure
         
         // Generate the summary asynchronously
@@ -137,6 +143,10 @@ export class SessionController {
         }
       } catch (error) {
         console.error('Error generating summary:', error);
+      } finally {
+        // Clear loading state and update status bar
+        this.isSummarizing = false;
+        this.updateStatusBar();
       }
     }
     
@@ -213,7 +223,11 @@ export class SessionController {
    * Update the status bar item based on current session state
    */
   private updateStatusBar(): void {
-    if (this.currentSession && !this.currentSession.endTime) {
+    if (this.isSummarizing) {
+      this.statusBarItem.text = '$(loading~spin) CodeJournal: Generating Summary';
+      this.statusBarItem.tooltip = 'CodeJournal is generating a summary of the session';
+      this.statusBarItem.command = undefined; // Disable clicking during summarization
+    } else if (this.currentSession && !this.currentSession.endTime) {
       this.statusBarItem.text = '$(record) CodeJournal: Recording';
       this.statusBarItem.tooltip = 'CodeJournal is recording changes';
       this.statusBarItem.command = 'codejournal.stopSession';
