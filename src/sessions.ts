@@ -16,6 +16,7 @@ export class SessionController {
   private summarizer: Summarizer;
   private journalManager: JournalManager;
   private isSummarizing: boolean = false;
+  private journalTreeDataProvider?: any; // Reference to tree data provider for refreshing
 
   constructor() {
     // Create status bar item to show session status
@@ -37,6 +38,13 @@ export class SessionController {
    */
   public setChangeTracker(changeTracker: any): void {
     this.changeTracker = changeTracker;
+  }
+
+  /**
+   * Set the journal tree data provider reference for refreshing
+   */
+  public setJournalTreeDataProvider(provider: any): void {
+    this.journalTreeDataProvider = provider;
   }
 
   /**
@@ -135,6 +143,11 @@ export class SessionController {
           try {
             await this.journalManager.addToJournal(summary);
             console.log('Session summary added to journal file');
+            
+            // Refresh the journal tree view to show the new entry
+            if (this.journalTreeDataProvider) {
+              this.journalTreeDataProvider.refresh();
+            }
           } catch (error) {
             console.error('Error adding summary to journal:', error);
           }

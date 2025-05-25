@@ -21,6 +21,9 @@ export function activate(context: vscode.ExtensionContext) {
   const journalTreeDataProvider = new JournalTreeDataProvider();
   vscode.window.registerTreeDataProvider('codejournal', journalTreeDataProvider);
   
+  // Set journal tree data provider reference for auto-refresh
+  sessionController.setJournalTreeDataProvider(journalTreeDataProvider);
+  
   // Register session commands
   const startSessionCommand = vscode.commands.registerCommand('codejournal.startSession', () => {
     const session = sessionController.startSession();
