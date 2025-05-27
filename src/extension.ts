@@ -1,13 +1,23 @@
-// The module 'vscode' contains the VS Code extensibility API
 import * as vscode from 'vscode';
+import { TelemetryReporter } from '@vscode/extension-telemetry';
+
 import { ChangeTracker } from './changeTracker';
 import { SessionController } from './sessions';
 import { JournalTreeDataProvider, JournalViewMode } from './journalTreeView';
 import { Logger } from './logger';
 
+// CONSTANTS
+const connectionString = 'InstrumentationKey=48a1202b-f381-4ab1-aa02-bed465ff2a16;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=d28b9b0a-886b-44da-a9a8-2efacdc70044';
+
+// Telemetry reporter
+let reporter;
+
 // Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
   Logger.startup('Extension is now active');
+
+  // Initialize telemetry
+  reporter = new TelemetryReporter(connectionString);
 
   // Create initial instances
   const sessionController = new SessionController();
@@ -229,6 +239,7 @@ export function activate(context: vscode.ExtensionContext) {
     toggleViewModeCommand,
     openFileCommand,
     navigateToEditCommand,
+    reporter
   );
 }
 
