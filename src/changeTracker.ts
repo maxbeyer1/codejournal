@@ -1,7 +1,9 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
-import { BaseChange, ChangeType } from './types';
+
+import { BaseChange } from './types';
 import { SessionController } from './sessions';
+import { Logger } from './logger';
 
 /**
  * Save change to a file
@@ -153,14 +155,13 @@ export class ChangeTracker {
 
       this.changes.push(change);
       
-      console.log(`Change tracked in ${filePath}`);
-      console.log(`Type: save`);
-      console.log(`Change ID: ${change.id}`);
-      console.log(`Session ID: ${change.sessionId}`);
-      console.log(`Timestamp: ${change.timestamp}`);
-      console.log('---');
+      Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
+      Logger.debug(`Type: save`, 'ChangeTracker');
+      Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
+      Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
+      Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
     } else if (oldContent !== newContent && !isSessionActive) {
-      console.log(`Change not tracked in ${filePath} (no active session)`);
+      Logger.info(`Change not tracked in ${filePath} (no active session)`, 'ChangeTracker');
     }
 
     // Always update the cache with the new content
@@ -176,14 +177,14 @@ export class ChangeTracker {
     const isSessionActive = !!currentSession;
     
     if (!isSessionActive) {
-      console.log('File creation event ignored (no active session)');
+      Logger.debug('File creation event ignored (no active session)', 'ChangeTracker');
       // Still update cache, but don't record changes
       for (const uri of event.files) {
         try {
           const document = await vscode.workspace.openTextDocument(uri);
           this.fileContentCache.set(uri.fsPath, document.getText());
         } catch (error) {
-          console.error(`Error updating cache for ${uri.fsPath}:`, error);
+          Logger.error(`Error updating cache for ${uri.fsPath}`, 'ChangeTracker', error);
         }
       }
       return;
@@ -210,14 +211,13 @@ export class ChangeTracker {
         // Add to content cache
         this.fileContentCache.set(filePath, content);
         
-        console.log(`File created: ${filePath}`);
-        console.log(`Type: create`);
-        console.log(`Change ID: ${change.id}`);
-        console.log(`Session ID: ${change.sessionId}`);
-        console.log(`Timestamp: ${change.timestamp}`);
-        console.log('---');
+        Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
+        Logger.debug(`Type: create`, 'ChangeTracker');
+        Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
+        Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
+        Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
       } catch (error) {
-        console.error(`Error tracking file creation for ${uri.fsPath}:`, error);
+        Logger.error(`Error tracking file creation for ${uri.fsPath}`, 'ChangeTracker', error);
       }
     }
   }
@@ -246,15 +246,14 @@ export class ChangeTracker {
         };
 
         this.changes.push(change);
-        
-        console.log(`File deleted: ${filePath}`);
-        console.log(`Type: delete`);
-        console.log(`Change ID: ${change.id}`);
-        console.log(`Session ID: ${change.sessionId}`);
-        console.log(`Timestamp: ${change.timestamp}`);
-        console.log('---');
+
+        Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
+        Logger.debug(`Type: delete`, 'ChangeTracker');
+        Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
+        Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
+        Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
       } else {
-        console.log(`File deletion not tracked for ${filePath} (no active session)`);
+        Logger.info(`File deletion not tracked for ${filePath} (no active session)`, 'ChangeTracker');
       }
       
       // Always remove from content cache
@@ -300,18 +299,17 @@ export class ChangeTracker {
           };
   
           this.changes.push(change);
-          
-          console.log(`File renamed: ${oldFilePath} -> ${newFilePath}`);
-          console.log(`Type: rename`);
-          console.log(`Change ID: ${change.id}`);
-          console.log(`Session ID: ${change.sessionId}`);
-          console.log(`Timestamp: ${change.timestamp}`);
-          console.log('---');
+
+          Logger.info(`File renamed: ${oldFilePath} -> ${newFilePath}`, 'ChangeTracker');
+          Logger.debug(`Type: save`, 'ChangeTracker');
+          Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
+          Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
+          Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
         } else {
-          console.log(`File rename not tracked: ${oldFilePath} -> ${newFilePath} (no active session)`);
+          Logger.info(`File rename not tracked: ${oldFilePath} -> ${newFilePath} (no active session)`, 'ChangeTracker');
         }
       } catch (error) {
-        console.error(`Error handling file rename for ${oldUri.fsPath}:`, error);
+        Logger.error(`Error handling file rename for ${oldUri.fsPath}`, 'ChangeTracker', error);
       }
     }
   }

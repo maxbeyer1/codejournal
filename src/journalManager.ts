@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import { SessionSummary } from './summarizer';
+import { Logger } from './logger';
 
 /**
  * Manages the CodeJournal log file
@@ -18,7 +19,7 @@ export class JournalManager {
    */
   public async addToJournal(summary: SessionSummary): Promise<boolean> {
     if (this.disposed) {
-      console.log('Cannot add to journal: manager disposed');
+      Logger.debug('Cannot add to journal: manager disposed', 'JournalManager');
       return false;
     }
 
@@ -32,10 +33,10 @@ export class JournalManager {
       // Append to journal
       await this.updateJournalFile(journalPath, formattedSummary);
       
-      console.log(`Session summary added to journal at ${journalPath}`);
+      Logger.info(`Session summary added to journal at ${journalPath}`, 'JournalManager');
       return true;
     } catch (error) {
-      console.error('Error adding to journal:', error);
+      Logger.error(`Error adding to journal`, 'JournalManager', error);
       return false;
     }
   }
@@ -94,7 +95,7 @@ export class JournalManager {
       // Write the updated content back to the file
       fs.writeFileSync(filePath, updatedContent);
     } catch (error) {
-      console.error(`Error updating journal file at ${filePath}:`, error);
+      Logger.error(`Error updating journal file at ${filePath}`, 'JournalManager', error);
       throw error;
     }
   }
@@ -138,7 +139,7 @@ export class JournalManager {
       const document = await vscode.workspace.openTextDocument(journalPath);
       await vscode.window.showTextDocument(document);
     } catch (error) {
-      console.error('Error opening journal file:', error);
+      Logger.error('Error opening journal file', 'JournalManager', error);
       throw error;
     }
   }

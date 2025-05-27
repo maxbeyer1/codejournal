@@ -16,6 +16,7 @@ import {
 
 import { Session } from "./types";
 import { Change } from "./changeTracker";
+import { Logger } from "./logger";
 
 /**
  * Schema for a change summary entry
@@ -99,7 +100,11 @@ export class Summarizer {
     changes: Change[]
   ): Promise<{ summary?: SessionSummary; error?: SummarizationError }> {
     if (this.disposed) {
-      console.log("Cannot generate summary: summarizer disposed");
+      Logger.debug(
+        "Summarizer has been disposed, cannot generate summary",
+        "Summarizer"
+      );
+
       return {
         error: {
           type: "config_error",
@@ -110,7 +115,11 @@ export class Summarizer {
     }
 
     if (!session.endTime) {
-      console.log("Cannot generate summary: session is still active");
+      Logger.debug(
+        `Cannot summarize session ${session.id} because it is still active`,
+        "Summarizer"
+      );
+
       return {
         error: {
           type: "config_error",
@@ -121,7 +130,11 @@ export class Summarizer {
     }
 
     if (changes.length === 0) {
-      console.log("Cannot generate summary: no changes in session");
+      Logger.debug(
+        `No changes found in session ${session.id}`,
+        "Summarizer"
+      );
+
       return {
         error: {
           type: "config_error",
@@ -137,7 +150,11 @@ export class Summarizer {
         .getConfiguration("codejournal")
         .get("anthropicApiKey");
       if (!apiKey || typeof apiKey !== "string" || apiKey.trim() === "") {
-        console.log("Cannot generate summary: no Anthropic API key configured");
+        Logger.debug(
+          "Cannot generate summary: no Anthropic API key configured",
+          "Summarizer"
+        );
+
         vscode.window
           .showErrorMessage(
             "CodeJournal: API key required for summary generation. Please configure your Anthropic API key in settings.",
@@ -166,9 +183,11 @@ export class Summarizer {
           .getConfiguration("codejournal")
           .get("anthropicModel") || "claude-3-7-sonnet-latest";
       if (typeof anthropicModel !== "string") {
-        console.log(
-          "Cannot generate summary: invalid Anthropic model configured"
+        Logger.debug(
+          "Invalid Anthropic model configured",
+          "Summarizer"
         );
+
         vscode.window
           .showErrorMessage(
             "CodeJournal: Invalid model configuration. Please check your model setting.",
@@ -200,9 +219,11 @@ export class Summarizer {
       const maxTokenEstimate = 500000; // Estimate for Claude's 200k context window
 
       if (contentSizeEstimate > maxTokenEstimate) {
-        console.log(
-          `Content size estimate (${contentSizeEstimate}) may exceed token limits`
+        Logger.debug(
+          `Content size estimate (${contentSizeEstimate}) may exceed token limits`,
+          "Summarizer"
         );
+
         vscode.window
           .showWarningMessage(
             "CodeJournal: Large amount of changes detected. Summary may be truncated or fail.",
@@ -225,8 +246,6 @@ export class Summarizer {
         // Check if in debug mode
         const isDebugMode = process.env.DEBUG_MODE === "true";
 
-        console.log(`Environment variables: ${JSON.stringify(process.env, null, 2)}`);
-
         // Add Helicone proxy only in debug mode
         const anthropicConfig = {
           apiKey: apiKey as string,
@@ -242,12 +261,20 @@ export class Summarizer {
         };
 
         if (isDebugMode && process.env.HELICONE_API_KEY) {
-          console.log("Debug mode detected - enabling Helicone telemetry");
+          Logger.debug(
+            "Using Helicone proxy for Anthropic API in debug mode",
+            "Summarizer"
+          );
         }
 
         anthropic = createAnthropic(anthropicConfig);
       } catch (error) {
-        console.error("Error creating Anthropic client:", error);
+        Logger.error(
+          "Failed to initialize Anthropic client",
+          "Summarizer",
+          error
+        );
+
         vscode.window.showErrorMessage(
           "CodeJournal: Failed to initialize AI client. Please check your API key."
         );
@@ -289,7 +316,12 @@ export class Summarizer {
 
       // Validate the result
       if (!result || !result.object || !result.object.files) {
-        console.error("Invalid response from AI service");
+        Logger.error(
+          "Received invalid response from AI service",
+          "Summarizer",
+          result
+        );
+
         vscode.window.showErrorMessage(
           "CodeJournal: Received invalid response from AI service."
         );
@@ -312,7 +344,12 @@ export class Summarizer {
 
       return { summary: sessionSummary };
     } catch (error) {
-      console.error("Unexpected error generating summary:", error);
+      Logger.error(
+        "Unexpected error generating summary",
+        "Summarizer",
+        error instanceof Error ? error : new Error(String(error))
+      );
+
       return this.handleAIError(error);
     }
   }
@@ -504,7 +541,7 @@ Example of expected response format:
    * Handle AI-specific errors with appropriate user feedback
    */
   private handleAIError(error: unknown): { error: SummarizationError } {
-    console.error("AI Error details:", error);
+    Logger.error("Error generating summary", "Summarizer", error);
 
     // Handle specific Vercel AI SDK errors
     if (error instanceof APICallError) {

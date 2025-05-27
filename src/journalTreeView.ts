@@ -2,6 +2,8 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 
+import { Logger } from './logger';
+
 /**
  * View mode for organizing journal entries
  */
@@ -180,7 +182,10 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
       const content = fs.readFileSync(journalPath, 'utf8');
       this.sessions = this.parseJournalContent(content);
     } catch (error) {
-      console.error('Error loading journal data:', error);
+      Logger.error('Error loading journal data', 'JournalTreeDataProvider', error);
+      vscode.window.showErrorMessage('Failed to load journal data. See console for details.');
+
+      // Reset sessions on error
       this.sessions = [];
     }
   }
@@ -435,7 +440,7 @@ export class JournalTreeDataProvider implements vscode.TreeDataProvider<SessionT
       
       return null;
     } catch (error) {
-      console.error('Error calculating edit line number:', error);
+      Logger.error('Error calculating edit line number', 'JournalTreeDataProvider', error);
       return null;
     }
   }

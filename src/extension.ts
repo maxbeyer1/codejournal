@@ -3,10 +3,11 @@ import * as vscode from 'vscode';
 import { ChangeTracker } from './changeTracker';
 import { SessionController } from './sessions';
 import { JournalTreeDataProvider, JournalViewMode } from './journalTreeView';
+import { Logger } from './logger';
 
 // Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
-  console.log('CodeJournal extension is now active');
+  Logger.startup('Extension is now active');
 
   // Create initial instances
   const sessionController = new SessionController();
@@ -28,15 +29,15 @@ export function activate(context: vscode.ExtensionContext) {
   const startSessionCommand = vscode.commands.registerCommand('codejournal.startSession', () => {
     const session = sessionController.startSession();
     if (session) {
-      console.log(`Started new session with ID: ${session.id}`);
+      Logger.info(`Started new session with ID: ${session.id}`, 'Extension');
     }
   });
   
   const stopSessionCommand = vscode.commands.registerCommand('codejournal.stopSession', async () => {
     const session = await sessionController.stopSession();
     if (session) {
-      console.log(`Stopped session with ID: ${session.id}`);
-      console.log(`Session duration: ${new Date(session.endTime!).getTime() - new Date(session.startTime).getTime()} ms`);
+      Logger.info(`Stopped session with ID: ${session.id}`, 'Extension');
+      Logger.info(`Session duration: ${new Date(session.endTime!).getTime() - new Date(session.startTime).getTime()} ms`, 'Extension');
     }
   });
   
@@ -113,7 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
       await sessionController.openJournal();
       vscode.window.showInformationMessage('CodeJournal file opened.');
     } catch (error) {
-      console.error('Error opening journal file:', error);
+      Logger.error('Error opening journal file:', 'Extension', error);
       vscode.window.showErrorMessage('Failed to open journal file. See console for details.');
     }
   });
@@ -149,7 +150,7 @@ export function activate(context: vscode.ExtensionContext) {
       const document = await vscode.workspace.openTextDocument(fullPath);
       await vscode.window.showTextDocument(document);
     } catch (error) {
-      console.error('Error opening file:', error);
+      Logger.error('Error opening file:', 'Extension', error);
       vscode.window.showErrorMessage(`Failed to open file: ${filePath}`);
     }
   });
@@ -210,7 +211,7 @@ export function activate(context: vscode.ExtensionContext) {
       }, 2000);
       
     } catch (error) {
-      console.error('Error navigating to edit:', error);
+      Logger.error('Error navigating to edit:', 'Extension', error);
       vscode.window.showErrorMessage(`Failed to navigate to edit: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   });

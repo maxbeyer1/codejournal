@@ -1,8 +1,10 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
+
 import { Session } from './types';
 import { Summarizer } from './summarizer';
 import { JournalManager } from './journalManager';
+import { Logger } from './logger';
 
 /**
  * Manages CodeJournal sessions
@@ -67,10 +69,8 @@ export class SessionController {
     // Update status bar
     this.updateStatusBar();
     
-    console.log(`CodeJournal session started`);
-    console.log(`Session ID: ${this.currentSession.id}`);
-    console.log(`Start time: ${this.currentSession.startTime}`);
-    console.log('---');
+    Logger.info(`Session started with ID: ${this.currentSession.id}`, 'SessionController');
+    Logger.info(`Start time: ${this.currentSession.startTime}`, 'SessionController');
     
     vscode.window.showInformationMessage('CodeJournal session started.');
     
@@ -97,30 +97,29 @@ export class SessionController {
     const sessionChanges = this.changeTracker?.getChangesBySession(this.currentSession.id) || [];
     
     // Log session summary for debugging
-    console.log(`CodeJournal session stopped`);
-    console.log(`Session ID: ${this.currentSession.id}`);
-    console.log(`Start time: ${this.currentSession.startTime}`);
-    console.log(`End time: ${this.currentSession.endTime}`);
-    console.log(`Duration: ${this.calculateDuration(this.currentSession)} minutes`);
-    console.log(`Total changes: ${sessionChanges.length}`);
+    Logger.info(`Session with ID ${this.currentSession.id} stopped`, 'SessionController');
+    Logger.debug(`Start time: ${this.currentSession.startTime}`, 'SessionController');
+    Logger.debug(`End time: ${this.currentSession.endTime}`, 'SessionController');
+    Logger.debug(`Duration: ${this.calculateDuration(this.currentSession)} minutes`, 'SessionController');
+    Logger.debug(`Total changes: ${sessionChanges.length}`, 'SessionController');
     
     if (sessionChanges.length > 0) {
       // Group changes by type
       const changesByType = this.groupChangesByType(sessionChanges);
       
-      console.log('Changes summary:');
+      Logger.debug('Changes by type:', 'SessionController');
       for (const [type, changes] of Object.entries(changesByType)) {
-        console.log(`- ${type}: ${changes.length} changes`);
+        Logger.debug(`- ${type}: ${changes.length} changes`, 'SessionController');
       }
       
-      console.log('Change IDs:');
+      Logger.debug('Change IDs:', 'SessionController');
       sessionChanges.forEach((change: { id: string; type: string; filePath: string }) => {
-        console.log(`- ${change.id} (${change.type}: ${change.filePath})`);
+        Logger.debug(`- ${change.id} (${change.type}: ${change.filePath})`, 'SessionController');
       });
 
       // Generate a summary using the LLM if we have changes
       try {
-        console.log('Generating LLM summary...');
+        Logger.info('Generating summary for session changes', 'SessionController');
         
         // Set loading state and update status bar
         this.isSummarizing = true;
@@ -133,8 +132,8 @@ export class SessionController {
         
         if (result.summary) {
           const formattedSummary = this.summarizer.formatSummaryForConsole(result.summary);
-          console.log('\nLLM-GENERATED SUMMARY:');
-          console.log(formattedSummary);
+          Logger.debug('\nLLM-GENERATED SUMMARY:', 'SessionController');
+          Logger.debug(formattedSummary, 'SessionController');
           
           // Store the summary with the session for later use
           (this.currentSession as any).summary = result.summary;
@@ -142,23 +141,23 @@ export class SessionController {
           // Add the summary to the journal file
           try {
             await this.journalManager.addToJournal(result.summary);
-            console.log('Session summary added to journal file');
+            Logger.info('Session summary added to journal file', 'SessionController');
             
             // Refresh the journal tree view to show the new entry
             if (this.journalTreeDataProvider) {
               this.journalTreeDataProvider.refresh();
             }
           } catch (error) {
-            console.error('Error adding summary to journal:', error);
+            Logger.error('Failed to save summary to journal file', 'SessionController', error);
             vscode.window.showErrorMessage('CodeJournal: Failed to save summary to journal file.');
           }
         } else if (result.error) {
-          console.log('Summary generation failed:', result.error.message);
+          Logger.error('Summary generation failed', 'SessionController', result.error);
           
           // The specific error handling and user messages are already handled in the summarizer
           // Just log additional context here
           if (result.error.details) {
-            console.log('Error details:', result.error.details);
+            Logger.error(`Error details: ${result.error.details}`, 'SessionController');
           }
           
           // Show a retry option for retryable errors
@@ -173,20 +172,18 @@ export class SessionController {
           }
         } else {
           // Fallback case - should not happen with the new error handling
-          console.log('Could not generate summary - unknown error.');
+          Logger.error('Failed to generate summary for unknown reason', 'SessionController');
           vscode.window.showErrorMessage('CodeJournal: Failed to generate summary for unknown reason.');
         }
       } catch (error) {
-        console.error('Error generating summary:', error);
+        Logger.error('Error generating summary', 'SessionController', error);
       } finally {
         // Clear loading state and update status bar
         this.isSummarizing = false;
         this.updateStatusBar();
       }
     }
-    
-    console.log('---');
-    
+      
     vscode.window.showInformationMessage(`CodeJournal session stopped. ${sessionChanges.length} changes recorded.`);
     
     return this.currentSession;
@@ -284,7 +281,7 @@ export class SessionController {
    * Retry summary generation for failed attempts
    */
   private async retryGenerateSummary(session: Session, sessionChanges: any[]): Promise<void> {
-    console.log('Retrying summary generation...');
+    Logger.info('Retrying summary generation for session', 'SessionController');
     
     try {
       // Set loading state again
@@ -295,8 +292,9 @@ export class SessionController {
       
       if (result.summary) {
         const formattedSummary = this.summarizer.formatSummaryForConsole(result.summary);
-        console.log('\nRETRY - LLM-GENERATED SUMMARY:');
-        console.log(formattedSummary);
+
+        Logger.debug('\nRETRY - LLM-GENERATED SUMMARY:', 'SessionController');
+        Logger.debug(formattedSummary, 'SessionController');
         
         // Store the summary with the session for later use
         (session as any).summary = result.summary;
@@ -304,7 +302,7 @@ export class SessionController {
         // Add the summary to the journal file
         try {
           await this.journalManager.addToJournal(result.summary);
-          console.log('Session summary added to journal file (after retry)');
+          Logger.info('Session summary added to journal file after retry', 'SessionController');
           vscode.window.showInformationMessage('CodeJournal: Summary generated successfully after retry.');
           
           // Refresh the journal tree view to show the new entry
@@ -312,16 +310,16 @@ export class SessionController {
             this.journalTreeDataProvider.refresh();
           }
         } catch (error) {
-          console.error('Error adding summary to journal (retry):', error);
+          Logger.error('Failed to save summary to journal file after retry', 'SessionController', error);
           vscode.window.showErrorMessage('CodeJournal: Failed to save summary to journal file.');
         }
       } else if (result.error) {
-        console.log('Retry failed:', result.error.message);
+        Logger.error('Retry summary generation failed', 'SessionController', result.error);
         // Don't show another retry option to avoid infinite loops
         vscode.window.showErrorMessage(`CodeJournal: Retry failed - ${result.error.message}`);
       }
     } catch (error) {
-      console.error('Error during retry:', error);
+      Logger.error('Error during retry summary generation', 'SessionController', error);
       vscode.window.showErrorMessage('CodeJournal: Retry attempt failed.');
     } finally {
       // Clear loading state
