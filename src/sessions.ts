@@ -129,19 +129,19 @@ export class SessionController {
         const session = this.currentSession; // Capture for async closure
         
         // Generate the summary asynchronously
-        const summary = await this.summarizer.summarizeSession(session, sessionChanges);
+        const result = await this.summarizer.summarizeSession(session, sessionChanges);
         
-        if (summary) {
-          const formattedSummary = this.summarizer.formatSummaryForConsole(summary);
+        if (result.summary) {
+          const formattedSummary = this.summarizer.formatSummaryForConsole(result.summary);
           console.log('\nLLM-GENERATED SUMMARY:');
           console.log(formattedSummary);
           
           // Store the summary with the session for later use
-          (this.currentSession as any).summary = summary;
+          (this.currentSession as any).summary = result.summary;
           
           // Add the summary to the journal file
           try {
-            await this.journalManager.addToJournal(summary);
+            await this.journalManager.addToJournal(result.summary);
             console.log('Session summary added to journal file');
             
             // Refresh the journal tree view to show the new entry
@@ -150,9 +150,31 @@ export class SessionController {
             }
           } catch (error) {
             console.error('Error adding summary to journal:', error);
+            vscode.window.showErrorMessage('CodeJournal: Failed to save summary to journal file.');
+          }
+        } else if (result.error) {
+          console.log('Summary generation failed:', result.error.message);
+          
+          // The specific error handling and user messages are already handled in the summarizer
+          // Just log additional context here
+          if (result.error.details) {
+            console.log('Error details:', result.error.details);
+          }
+          
+          // Show a retry option for retryable errors
+          if (result.error.retryable) {
+            const retryMessage = `Summary generation failed: ${result.error.message}`;
+            vscode.window.showErrorMessage(retryMessage, 'Retry').then(selection => {
+              if (selection === 'Retry') {
+                // Recursively retry the summary generation
+                this.retryGenerateSummary(session, sessionChanges);
+              }
+            });
           }
         } else {
-          console.log('Could not generate summary - API key may not be configured.');
+          // Fallback case - should not happen with the new error handling
+          console.log('Could not generate summary - unknown error.');
+          vscode.window.showErrorMessage('CodeJournal: Failed to generate summary for unknown reason.');
         }
       } catch (error) {
         console.error('Error generating summary:', error);
@@ -256,6 +278,56 @@ export class SessionController {
    */
   public async openJournal(): Promise<void> {
     await this.journalManager.openJournalFile();
+  }
+
+  /**
+   * Retry summary generation for failed attempts
+   */
+  private async retryGenerateSummary(session: Session, sessionChanges: any[]): Promise<void> {
+    console.log('Retrying summary generation...');
+    
+    try {
+      // Set loading state again
+      this.isSummarizing = true;
+      this.updateStatusBar();
+      
+      const result = await this.summarizer.summarizeSession(session, sessionChanges);
+      
+      if (result.summary) {
+        const formattedSummary = this.summarizer.formatSummaryForConsole(result.summary);
+        console.log('\nRETRY - LLM-GENERATED SUMMARY:');
+        console.log(formattedSummary);
+        
+        // Store the summary with the session for later use
+        (session as any).summary = result.summary;
+        
+        // Add the summary to the journal file
+        try {
+          await this.journalManager.addToJournal(result.summary);
+          console.log('Session summary added to journal file (after retry)');
+          vscode.window.showInformationMessage('CodeJournal: Summary generated successfully after retry.');
+          
+          // Refresh the journal tree view to show the new entry
+          if (this.journalTreeDataProvider) {
+            this.journalTreeDataProvider.refresh();
+          }
+        } catch (error) {
+          console.error('Error adding summary to journal (retry):', error);
+          vscode.window.showErrorMessage('CodeJournal: Failed to save summary to journal file.');
+        }
+      } else if (result.error) {
+        console.log('Retry failed:', result.error.message);
+        // Don't show another retry option to avoid infinite loops
+        vscode.window.showErrorMessage(`CodeJournal: Retry failed - ${result.error.message}`);
+      }
+    } catch (error) {
+      console.error('Error during retry:', error);
+      vscode.window.showErrorMessage('CodeJournal: Retry attempt failed.');
+    } finally {
+      // Clear loading state
+      this.isSummarizing = false;
+      this.updateStatusBar();
+    }
   }
 
   /**
