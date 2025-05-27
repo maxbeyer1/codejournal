@@ -7,7 +7,7 @@ import { JournalTreeDataProvider, JournalViewMode } from './journalTreeView';
 import { Logger } from './logger';
 
 // CONSTANTS
-const connectionString = 'InstrumentationKey=48a1202b-f381-4ab1-aa02-bed465ff2a16;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=d28b9b0a-886b-44da-a9a8-2efacdc70044';
+const connectionString = 'InstrumentationKey=67f40232-3bd8-4cc4-b7b4-11c936cc6590;IngestionEndpoint=https://centralus-2.in.applicationinsights.azure.com/;LiveEndpoint=https://centralus.livediagnostics.monitor.azure.com/;ApplicationId=afbe2820-b5c1-4ca6-b304-3523a581110d';
 
 // Telemetry reporter
 let reporter: TelemetryReporter;
