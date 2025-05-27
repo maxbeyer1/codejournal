@@ -2,7 +2,9 @@
   "name": "codejournal",
   "displayName": "CodeJournal",
   "description": "Instantly generate changelogs while working in VSCode",
-  "version": "0.0.1",
+  "version": "0.1.0-alpha.1",
+  "publisher": "beyerlabs",
+  "icon": "assets/codejournal-icon.png",
   "engines": {
     "vscode": "^1.100.0"
   },
