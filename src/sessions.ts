@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as crypto from 'crypto';
+import { TelemetryReporter } from '@vscode/extension-telemetry';
 
 import { Session } from './types';
 import { Summarizer } from './summarizer';
@@ -19,8 +20,10 @@ export class SessionController {
   private journalManager: JournalManager;
   private isSummarizing: boolean = false;
   private journalTreeDataProvider?: any; // Reference to tree data provider for refreshing
+  private reporter?: TelemetryReporter; // Telemetry reporter
 
-  constructor() {
+  constructor(reporter?: TelemetryReporter) {
+    this.reporter = reporter;
     // Create status bar item to show session status
     this.statusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
@@ -143,6 +146,17 @@ export class SessionController {
             await this.journalManager.addToJournal(result.summary);
             Logger.info('Session summary added to journal file', 'SessionController');
             
+            // Send summary generation telemetry
+            if (this.reporter) {
+              this.reporter.sendTelemetryEvent('summaryGenerated', {
+                'sessionId': session.id,
+                'changeCount': sessionChanges.length.toString()
+              }, {
+                'timestamp': Date.now(),
+                'sessionDuration': this.calculateDuration(session) * 60000 // Convert to ms
+              });
+            }
+            
             // Refresh the journal tree view to show the new entry
             if (this.journalTreeDataProvider) {
               this.journalTreeDataProvider.refresh();
@@ -153,6 +167,18 @@ export class SessionController {
           }
         } else if (result.error) {
           Logger.error('Summary generation failed', 'SessionController', result.error);
+          
+          // Send error telemetry
+          if (this.reporter) {
+            this.reporter.sendTelemetryErrorEvent('summaryGenerationFailed', {
+              'sessionId': session.id,
+              'errorMessage': result.error.message,
+              'retryable': result.error.retryable?.toString(),
+              'changeCount': sessionChanges.length.toString()
+            }, {
+              'timestamp': Date.now()
+            });
+          }
           
           // The specific error handling and user messages are already handled in the summarizer
           // Just log additional context here
@@ -177,6 +203,17 @@ export class SessionController {
         }
       } catch (error) {
         Logger.error('Error generating summary', 'SessionController', error);
+        
+        // Send error telemetry for unexpected errors
+        if (this.reporter && this.currentSession) {
+          this.reporter.sendTelemetryErrorEvent('summaryGenerationError', {
+            'sessionId': this.currentSession.id,
+            'errorType': 'unexpected',
+            'changeCount': sessionChanges.length.toString()
+          }, {
+            'timestamp': Date.now()
+          });
+        }
       } finally {
         // Clear loading state and update status bar
         this.isSummarizing = false;

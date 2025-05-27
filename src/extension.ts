@@ -10,7 +10,7 @@ import { Logger } from './logger';
 const connectionString = 'InstrumentationKey=48a1202b-f381-4ab1-aa02-bed465ff2a16;IngestionEndpoint=https://eastus-8.in.applicationinsights.azure.com/;LiveEndpoint=https://eastus.livediagnostics.monitor.azure.com/;ApplicationId=d28b9b0a-886b-44da-a9a8-2efacdc70044';
 
 // Telemetry reporter
-let reporter;
+let reporter: TelemetryReporter;
 
 // Called when extension is activated
 export function activate(context: vscode.ExtensionContext) {
@@ -18,9 +18,17 @@ export function activate(context: vscode.ExtensionContext) {
 
   // Initialize telemetry
   reporter = new TelemetryReporter(connectionString);
+  
+  // Send extension activation telemetry
+  reporter.sendTelemetryEvent('extensionActivated', {
+    'platform': process.platform,
+    'nodeVersion': process.version
+  }, {
+    'activationTime': Date.now()
+  });
 
   // Create initial instances
-  const sessionController = new SessionController();
+  const sessionController = new SessionController(reporter);
   
   const changeTracker = new ChangeTracker(sessionController);
   const changeTrackerDisposable = changeTracker.start();
@@ -40,6 +48,13 @@ export function activate(context: vscode.ExtensionContext) {
     const session = sessionController.startSession();
     if (session) {
       Logger.info(`Started new session with ID: ${session.id}`, 'Extension');
+      
+      // Send session start telemetry
+      reporter.sendTelemetryEvent('sessionStarted', {
+        'sessionId': session.id
+      }, {
+        'timestamp': Date.now()
+      });
     }
   });
   
@@ -48,6 +63,15 @@ export function activate(context: vscode.ExtensionContext) {
     if (session) {
       Logger.info(`Stopped session with ID: ${session.id}`, 'Extension');
       Logger.info(`Session duration: ${new Date(session.endTime!).getTime() - new Date(session.startTime).getTime()} ms`, 'Extension');
+      
+      // Send session stop telemetry
+      const duration = new Date(session.endTime!).getTime() - new Date(session.startTime).getTime();
+      reporter.sendTelemetryEvent('sessionStopped', {
+        'sessionId': session.id
+      }, {
+        'duration': duration,
+        'timestamp': Date.now()
+      });
     }
   });
   
