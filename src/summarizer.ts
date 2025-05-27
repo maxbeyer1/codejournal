@@ -222,9 +222,30 @@ export class Summarizer {
       // Initialize the Vercel AI SDK with the API key
       let anthropic;
       try {
-        anthropic = createAnthropic({
+        // Check if in debug mode
+        const isDebugMode = process.env.DEBUG_MODE === "true";
+
+        console.log(`Environment variables: ${JSON.stringify(process.env, null, 2)}`);
+
+        // Add Helicone proxy only in debug mode
+        const anthropicConfig = {
           apiKey: apiKey as string,
-        });
+          ...(isDebugMode &&
+            process.env.HELICONE_API_KEY && {
+              baseURL: "https://anthropic.helicone.ai/v1",
+              headers: {
+                "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}`,
+                "Helicone-Property-Environment": "development",
+                "Helicone-Property-Session": session.id,
+              },
+            }),
+        };
+
+        if (isDebugMode && process.env.HELICONE_API_KEY) {
+          console.log("Debug mode detected - enabling Helicone telemetry");
+        }
+
+        anthropic = createAnthropic(anthropicConfig);
       } catch (error) {
         console.error("Error creating Anthropic client:", error);
         vscode.window.showErrorMessage(
