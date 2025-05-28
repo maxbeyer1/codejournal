@@ -16,3 +16,4 @@ vsc-extension-quickstart.md
 **/.env.*
 **/CLAUDE.md
 **/pnpm-lock.yaml
+**/.codejournal
