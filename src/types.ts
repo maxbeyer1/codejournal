@@ -14,7 +14,7 @@ export interface Session {
 /**
  * Types of changes that can be tracked
  */
-export type ChangeType = 'save' | 'create' | 'delete' | 'rename';
+export type ChangeType = "save" | "create" | "delete" | "rename";
 
 /**
  * Base change to a file

@@ -1,15 +1,15 @@
-import * as vscode from 'vscode';
-import * as crypto from 'crypto';
+import * as vscode from "vscode";
+import * as crypto from "crypto";
 
-import { BaseChange } from './types';
-import { SessionController } from './sessions';
-import { Logger } from './logger';
+import { BaseChange } from "./types";
+import { SessionController } from "./sessions";
+import { Logger } from "./logger";
 
 /**
  * Save change to a file
  */
 export interface SaveChange extends BaseChange {
-  type: 'save';
+  type: "save";
   oldContent: string;
   newContent: string;
 }
@@ -18,7 +18,7 @@ export interface SaveChange extends BaseChange {
  * File creation change
  */
 export interface CreateChange extends BaseChange {
-  type: 'create';
+  type: "create";
   content: string;
 }
 
@@ -26,7 +26,7 @@ export interface CreateChange extends BaseChange {
  * File deletion change
  */
 export interface DeleteChange extends BaseChange {
-  type: 'delete';
+  type: "delete";
   lastContent: string;
 }
 
@@ -34,7 +34,7 @@ export interface DeleteChange extends BaseChange {
  * File rename change
  */
 export interface RenameChange extends BaseChange {
-  type: 'rename';
+  type: "rename";
   newFilePath: string;
 }
 
@@ -85,7 +85,7 @@ export class ChangeTracker {
       deleteListener,
       renameListener
     );
-    
+
     // Return a composite disposable that can clean up all listeners
     return vscode.Disposable.from(...this.disposables);
   }
@@ -101,7 +101,7 @@ export class ChangeTracker {
    * Get changes for a specific session
    */
   public getChangesBySession(sessionId: string): Change[] {
-    return this.changes.filter(change => change.sessionId === sessionId);
+    return this.changes.filter((change) => change.sessionId === sessionId);
   }
 
   /**
@@ -121,12 +121,14 @@ export class ChangeTracker {
   public clearChanges(): void {
     this.changes = [];
   }
-  
+
   /**
    * Clear changes for a specific session
    */
   public clearSessionChanges(sessionId: string): void {
-    this.changes = this.changes.filter(change => change.sessionId !== sessionId);
+    this.changes = this.changes.filter(
+      (change) => change.sessionId !== sessionId
+    );
   }
 
   /**
@@ -136,10 +138,10 @@ export class ChangeTracker {
     // Check if a session is active
     const currentSession = this.sessionController?.getCurrentSession();
     const isSessionActive = !!currentSession;
-    
+
     const filePath = document.uri.fsPath;
     const newContent = document.getText();
-    const oldContent = this.fileContentCache.get(filePath) || '';
+    const oldContent = this.fileContentCache.get(filePath) || "";
 
     // Only track if content actually changed and there's an active session
     if (oldContent !== newContent && isSessionActive) {
@@ -147,21 +149,24 @@ export class ChangeTracker {
         id: this.generateChangeId(),
         timestamp: new Date().toISOString(),
         filePath,
-        type: 'save',
+        type: "save",
         oldContent,
         newContent,
-        sessionId: currentSession?.id
+        sessionId: currentSession?.id,
       };
 
       this.changes.push(change);
-      
-      Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
-      Logger.debug(`Type: save`, 'ChangeTracker');
-      Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
-      Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
-      Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
+
+      Logger.info(`Change tracked in ${filePath}`, "ChangeTracker");
+      Logger.debug(`Type: save`, "ChangeTracker");
+      Logger.debug(`Change ID: ${change.id}`, "ChangeTracker");
+      Logger.debug(`Session ID: ${change.sessionId}`, "ChangeTracker");
+      Logger.debug(`Timestamp: ${change.timestamp}`, "ChangeTracker");
     } else if (oldContent !== newContent && !isSessionActive) {
-      Logger.info(`Change not tracked in ${filePath} (no active session)`, 'ChangeTracker');
+      Logger.info(
+        `Change not tracked in ${filePath} (no active session)`,
+        "ChangeTracker"
+      );
     }
 
     // Always update the cache with the new content
@@ -175,21 +180,28 @@ export class ChangeTracker {
     // Check if a session is active
     const currentSession = this.sessionController?.getCurrentSession();
     const isSessionActive = !!currentSession;
-    
+
     if (!isSessionActive) {
-      Logger.debug('File creation event ignored (no active session)', 'ChangeTracker');
+      Logger.debug(
+        "File creation event ignored (no active session)",
+        "ChangeTracker"
+      );
       // Still update cache, but don't record changes
       for (const uri of event.files) {
         try {
           const document = await vscode.workspace.openTextDocument(uri);
           this.fileContentCache.set(uri.fsPath, document.getText());
         } catch (error) {
-          Logger.error(`Error updating cache for ${uri.fsPath}`, 'ChangeTracker', error);
+          Logger.error(
+            `Error updating cache for ${uri.fsPath}`,
+            "ChangeTracker",
+            error
+          );
         }
       }
       return;
     }
-    
+
     for (const uri of event.files) {
       try {
         const filePath = uri.fsPath;
@@ -201,23 +213,27 @@ export class ChangeTracker {
           id: this.generateChangeId(),
           timestamp: new Date().toISOString(),
           filePath,
-          type: 'create',
+          type: "create",
           content,
-          sessionId: currentSession?.id
+          sessionId: currentSession?.id,
         };
 
         this.changes.push(change);
-        
+
         // Add to content cache
         this.fileContentCache.set(filePath, content);
-        
-        Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
-        Logger.debug(`Type: create`, 'ChangeTracker');
-        Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
-        Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
-        Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
+
+        Logger.info(`Change tracked in ${filePath}`, "ChangeTracker");
+        Logger.debug(`Type: create`, "ChangeTracker");
+        Logger.debug(`Change ID: ${change.id}`, "ChangeTracker");
+        Logger.debug(`Session ID: ${change.sessionId}`, "ChangeTracker");
+        Logger.debug(`Timestamp: ${change.timestamp}`, "ChangeTracker");
       } catch (error) {
-        Logger.error(`Error tracking file creation for ${uri.fsPath}`, 'ChangeTracker', error);
+        Logger.error(
+          `Error tracking file creation for ${uri.fsPath}`,
+          "ChangeTracker",
+          error
+        );
       }
     }
   }
@@ -229,33 +245,36 @@ export class ChangeTracker {
     // Check if a session is active
     const currentSession = this.sessionController?.getCurrentSession();
     const isSessionActive = !!currentSession;
-    
+
     for (const uri of event.files) {
       const filePath = uri.fsPath;
       // Get the last content from cache before the file was deleted
-      const lastContent = this.fileContentCache.get(filePath) || '';
+      const lastContent = this.fileContentCache.get(filePath) || "";
 
       if (isSessionActive) {
         const change: DeleteChange = {
           id: this.generateChangeId(),
           timestamp: new Date().toISOString(),
           filePath,
-          type: 'delete',
+          type: "delete",
           lastContent,
-          sessionId: currentSession?.id
+          sessionId: currentSession?.id,
         };
 
         this.changes.push(change);
 
-        Logger.info(`Change tracked in ${filePath}`, 'ChangeTracker');
-        Logger.debug(`Type: delete`, 'ChangeTracker');
-        Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
-        Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
-        Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
+        Logger.info(`Change tracked in ${filePath}`, "ChangeTracker");
+        Logger.debug(`Type: delete`, "ChangeTracker");
+        Logger.debug(`Change ID: ${change.id}`, "ChangeTracker");
+        Logger.debug(`Session ID: ${change.sessionId}`, "ChangeTracker");
+        Logger.debug(`Timestamp: ${change.timestamp}`, "ChangeTracker");
       } else {
-        Logger.info(`File deletion not tracked for ${filePath} (no active session)`, 'ChangeTracker');
+        Logger.info(
+          `File deletion not tracked for ${filePath} (no active session)`,
+          "ChangeTracker"
+        );
       }
-      
+
       // Always remove from content cache
       this.fileContentCache.delete(filePath);
     }
@@ -268,17 +287,17 @@ export class ChangeTracker {
     // Check if a session is active
     const currentSession = this.sessionController?.getCurrentSession();
     const isSessionActive = !!currentSession;
-    
+
     for (const { oldUri, newUri } of event.files) {
       try {
         const oldFilePath = oldUri.fsPath;
         const newFilePath = newUri.fsPath;
-        
+
         // Update content cache with the new file path
-        const oldContent = this.fileContentCache.get(oldFilePath) || '';
+        const oldContent = this.fileContentCache.get(oldFilePath) || "";
         this.fileContentCache.delete(oldFilePath);
-        
-        // Try to read the new file content 
+
+        // Try to read the new file content
         try {
           const document = await vscode.workspace.openTextDocument(newUri);
           this.fileContentCache.set(newFilePath, document.getText());
@@ -286,30 +305,40 @@ export class ChangeTracker {
           // If we can't open the new document, at least preserve the old content
           this.fileContentCache.set(newFilePath, oldContent);
         }
-        
+
         if (isSessionActive) {
           // Create a rename change
           const change: RenameChange = {
             id: this.generateChangeId(),
             timestamp: new Date().toISOString(),
             filePath: oldFilePath, // Original file path
-            type: 'rename',
+            type: "rename",
             newFilePath, // New file path
-            sessionId: currentSession?.id
+            sessionId: currentSession?.id,
           };
-  
+
           this.changes.push(change);
 
-          Logger.info(`File renamed: ${oldFilePath} -> ${newFilePath}`, 'ChangeTracker');
-          Logger.debug(`Type: save`, 'ChangeTracker');
-          Logger.debug(`Change ID: ${change.id}`, 'ChangeTracker');
-          Logger.debug(`Session ID: ${change.sessionId}`, 'ChangeTracker');
-          Logger.debug(`Timestamp: ${change.timestamp}`, 'ChangeTracker');
+          Logger.info(
+            `File renamed: ${oldFilePath} -> ${newFilePath}`,
+            "ChangeTracker"
+          );
+          Logger.debug(`Type: save`, "ChangeTracker");
+          Logger.debug(`Change ID: ${change.id}`, "ChangeTracker");
+          Logger.debug(`Session ID: ${change.sessionId}`, "ChangeTracker");
+          Logger.debug(`Timestamp: ${change.timestamp}`, "ChangeTracker");
         } else {
-          Logger.info(`File rename not tracked: ${oldFilePath} -> ${newFilePath} (no active session)`, 'ChangeTracker');
+          Logger.info(
+            `File rename not tracked: ${oldFilePath} -> ${newFilePath} (no active session)`,
+            "ChangeTracker"
+          );
         }
       } catch (error) {
-        Logger.error(`Error handling file rename for ${oldUri.fsPath}`, 'ChangeTracker', error);
+        Logger.error(
+          `Error handling file rename for ${oldUri.fsPath}`,
+          "ChangeTracker",
+          error
+        );
       }
     }
   }
@@ -318,21 +347,23 @@ export class ChangeTracker {
    * Initialize the content cache with currently open documents
    */
   private initializeContentCache(): void {
-    vscode.workspace.textDocuments.forEach(document => {
+    vscode.workspace.textDocuments.forEach((document) => {
       this.fileContentCache.set(document.uri.fsPath, document.getText());
     });
 
     // Add listener for newly opened documents
-    const openListener = vscode.workspace.onDidOpenTextDocument(document => {
+    const openListener = vscode.workspace.onDidOpenTextDocument((document) => {
       this.fileContentCache.set(document.uri.fsPath, document.getText());
     });
 
     // Add listener for closed documents
-    const closeListener = vscode.workspace.onDidCloseTextDocument(document => {
-      // Optionally, we can free up memory by removing closed files from cache
-      // TODO: Need to evaluate this more
-      // this.fileContentCache.delete(document.uri.fsPath);
-    });
+    const closeListener = vscode.workspace.onDidCloseTextDocument(
+      (document) => {
+        // Optionally, we can free up memory by removing closed files from cache
+        // TODO: Need to evaluate this more
+        // this.fileContentCache.delete(document.uri.fsPath);
+      }
+    );
 
     this.disposables.push(openListener, closeListener);
   }
@@ -348,7 +379,7 @@ export class ChangeTracker {
    * Dispose of all event listeners
    */
   public dispose(): void {
-    this.disposables.forEach(d => d.dispose());
+    this.disposables.forEach((d) => d.dispose());
     this.disposables = [];
   }
 }

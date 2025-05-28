@@ -130,10 +130,7 @@ export class Summarizer {
     }
 
     if (changes.length === 0) {
-      Logger.debug(
-        `No changes found in session ${session.id}`,
-        "Summarizer"
-      );
+      Logger.debug(`No changes found in session ${session.id}`, "Summarizer");
 
       return {
         error: {
@@ -183,10 +180,7 @@ export class Summarizer {
           .getConfiguration("codejournal")
           .get("anthropicModel") || "claude-3-7-sonnet-latest";
       if (typeof anthropicModel !== "string") {
-        Logger.debug(
-          "Invalid Anthropic model configured",
-          "Summarizer"
-        );
+        Logger.debug("Invalid Anthropic model configured", "Summarizer");
 
         vscode.window
           .showErrorMessage(
