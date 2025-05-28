@@ -5,12 +5,14 @@
   "version": "0.1.0-alpha.1",
   "publisher": "beyerlabs",
   "icon": "assets/codejournal-icon.png",
+  "license": "GPL-3.0-only",
   "engines": {
     "vscode": "^1.100.0"
   },
   "categories": [
     "Other"
   ],
+  "pricing": "Free",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -99,13 +101,13 @@
     }
   },
   "scripts": {
-    "compile": "npm run check-types && node esbuild.js",
+    "compile": "pnpm run check-types && node esbuild.js",
     "check-types": "tsc --noEmit",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
-    "vscode:prepublish": "npm run package",
-    "package": "npm run check-types && node esbuild.js --production",
+    "vscode:prepublish": "pnpm run package",
+    "package": "pnpm run check-types && node esbuild.js --production",
     "pretest": "pnpm run compile && pnpm run lint",
     "lint": "eslint src",
     "test": "vscode-test"
@@ -130,5 +132,29 @@
     "npm-run-all": "^4.1.5",
     "typescript": "^5.8.3"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/maxbeyer1/codejournal.git"
+  },
+  "bugs": {
+    "url": "https://github.com/maxbeyer1/codejournal/issues"
+  },
+  "homepage": "https://github.com/maxbeyer1/codejournal/blob/main/README.md",
+  "keywords": [
+    "vscode",
+    "extension",
+    "changelog",
+    "journal",
+    "ai",
+    "anthropic",
+    "claude",
+    "productivity",
+    "developer tools",
+    "productivity tools",
+    "change tracking",
+    "version control",
+    "automation",
+    "session recording"
+  ],
   "packageManager": "pnpm@10.11.0+sha512.6540583f41cc5f628eb3d9773ecee802f4f9ef9923cc45b69890fb47991d4b092964694ec3a4f738a420c918a333062c8b925d312f42e4f0c263eb603551f977"
 }
